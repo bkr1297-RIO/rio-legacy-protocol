@@ -2,7 +2,27 @@
 
 **Cryptographic proof for AI actions.**
 
-The RIO Receipt Protocol is an open standard for generating tamper-evident receipts that prove what an AI system did, when it did it, and whether a human approved it. Any AI system — whether built on OpenAI, Anthropic, Google, Cohere, open-source models, or custom agents — can implement RIO Receipts to produce a verifiable audit trail.
+---
+
+## What Is a RIO Receipt?
+
+A RIO Receipt is a cryptographic record of an AI action and any associated human approval, written to a tamper-evident ledger. It allows an organization to later prove exactly what an AI system did, when it did it, which system was responsible, whether a human approved it, and that the record has not been altered.
+
+The RIO Receipt Protocol acts as a **"Layer 3" governance and proof layer** that sits beneath application logic and above human approvals, turning AI-assisted decisions and actions into verifiable, auditable records.
+
+**A standard RIO Receipt proves:**
+
+- What action was taken
+- Which AI or system initiated it
+- Whether a human approved it
+- When it happened
+- That the record has not been altered
+
+Any AI system — whether built on OpenAI, Anthropic, Google, Cohere, open-source models, or custom agents — can implement RIO Receipts to produce a verifiable audit trail.
+
+---
+
+## How It Works
 
 ```
 Intent → Governance → Authorization → Execution → Receipt → Ledger
@@ -10,24 +30,19 @@ Intent → Governance → Authorization → Execution → Receipt → Ledger
 SHA-256   SHA-256       SHA-256        SHA-256     SHA-256   Hash Chain
 ```
 
-Every stage is hashed. The receipt binds all hashes together. The ledger chains receipts into a tamper-evident sequence. If anything is altered after the fact, the math breaks and the tampering is detectable.
+Every stage of an AI action is hashed. The receipt binds all hashes together. The ledger chains receipts into a tamper-evident sequence. If anything is altered after the fact, the math breaks and the tampering is detectable.
+
+This is not a framework. It is not a product. It is a **protocol** — a set of rules for how receipts are structured, signed, chained, and verified. Any system can implement it.
 
 ---
 
 ## Why This Exists
 
-AI systems are making real decisions — sending emails, moving money, modifying records, scheduling meetings, writing code. Today, there is no standard way to prove:
+AI systems are making real decisions — sending emails, moving money, modifying records, scheduling meetings, writing code. Today, there is no standard way to prove any of it happened the way it was supposed to.
 
-- What action was taken
-- Which AI agent proposed it
-- What policy was evaluated
-- Whether a human approved it
-- What the outcome was
-- That the record has not been altered
+Prompt-level guardrails are bypassable. Policy documents are advisory. Audit logs can be incomplete or fabricated after the fact. Without a proof layer that is architecturally separate from the AI itself, every deployed agent is a liability.
 
-The RIO Receipt Protocol solves this. It gives every AI action a cryptographic receipt — a signed, hash-chained proof that the action was properly governed. The receipt is written to a tamper-evident ledger where any modification, deletion, insertion, or reordering is immediately detectable.
-
-This is not a framework. It is not a product. It is a **protocol** — a set of rules for how receipts are structured, signed, chained, and verified. Any system can implement it.
+The RIO Receipt Protocol gives every AI action a cryptographic receipt — a signed, hash-chained proof that the action was properly governed. The receipt is written to a tamper-evident ledger where any modification, deletion, insertion, or reordering is immediately detectable.
 
 ---
 
