@@ -5,8 +5,12 @@
  * This module provides the core receipt functions for the RIO Receipt Protocol.
  * It has zero external dependencies beyond Node.js built-ins.
  *
+ * The proof layer (open standard) requires only: intent + execution + receipt.
+ * Governance and authorization are optional extensions for systems that
+ * implement human approval workflows (e.g., the full RIO platform).
+ *
  * @module rio-receipt-protocol/receipts
- * @version 2.1.0
+ * @version 2.2.0
  * @license MIT OR Apache-2.0
  */
 
@@ -24,11 +28,6 @@ export function sha256(data) {
 /**
  * Hash an intent object using canonical field order.
  * @param {object} intent
- * @param {string} intent.intent_id
- * @param {string} intent.action
- * @param {string} intent.agent_id
- * @param {object} intent.parameters
- * @param {string} intent.timestamp
  * @returns {string} SHA-256 hash
  */
 export function hashIntent(intent) {
@@ -43,13 +42,26 @@ export function hashIntent(intent) {
 }
 
 /**
- * Hash a governance decision using canonical field order.
+ * Hash an execution record using canonical field order.
+ * @param {object} execution
+ * @returns {string} SHA-256 hash
+ */
+export function hashExecution(execution) {
+  const canonical = JSON.stringify({
+    intent_id: execution.intent_id,
+    action: execution.action,
+    result: execution.result,
+    connector: execution.connector,
+    timestamp: execution.timestamp,
+  });
+  return sha256(canonical);
+}
+
+// ─── Optional Extension: Governance Hashing ─────────────────────────
+
+/**
+ * Hash a governance decision. Optional — only for governed receipts.
  * @param {object} governance
- * @param {string} governance.intent_id
- * @param {string} governance.status
- * @param {string} governance.risk_level
- * @param {boolean} governance.requires_approval
- * @param {Array} governance.checks
  * @returns {string} SHA-256 hash
  */
 export function hashGovernance(governance) {
@@ -64,13 +76,8 @@ export function hashGovernance(governance) {
 }
 
 /**
- * Hash an authorization record using canonical field order.
+ * Hash an authorization record. Optional — only for governed receipts.
  * @param {object} authorization
- * @param {string} authorization.intent_id
- * @param {string} authorization.decision
- * @param {string} authorization.authorized_by
- * @param {string} authorization.timestamp
- * @param {*} [authorization.conditions]
  * @returns {string} SHA-256 hash
  */
 export function hashAuthorization(authorization) {
@@ -84,62 +91,62 @@ export function hashAuthorization(authorization) {
   return sha256(canonical);
 }
 
+// ─── Receipt Generation ─────────────────────────────────────────────
+
 /**
- * Hash an execution record using canonical field order.
- * @param {object} execution
- * @param {string} execution.intent_id
- * @param {string} execution.action
- * @param {string} execution.result
- * @param {string} execution.connector
- * @param {string} execution.timestamp
- * @returns {string} SHA-256 hash
+ * Build the chain_order based on which hashes are present.
+ * Proof layer: [intent_hash, execution_hash, receipt_hash] (3)
+ * Governed:    [intent_hash, governance_hash, authorization_hash, execution_hash, receipt_hash] (5)
  */
-export function hashExecution(execution) {
-  const canonical = JSON.stringify({
-    intent_id: execution.intent_id,
-    action: execution.action,
-    result: execution.result,
-    connector: execution.connector,
-    timestamp: execution.timestamp,
-  });
-  return sha256(canonical);
+function buildChainOrder(data) {
+  const order = ["intent_hash"];
+  if (data.governance_hash) order.push("governance_hash");
+  if (data.authorization_hash) order.push("authorization_hash");
+  order.push("execution_hash");
+  order.push("receipt_hash");
+  return order;
 }
 
 /**
- * Generate a complete RIO Receipt (v2.1).
+ * Generate a RIO Receipt (v2.2).
  *
- * The receipt binds intent, governance, authorization, and execution
- * into a single cryptographic proof that the action was properly governed.
+ * Core proof layer: requires intent_hash + execution_hash.
+ * Governed extension: also accepts governance_hash + authorization_hash.
  *
  * @param {object} data
- * @param {string} data.intent_hash - SHA-256 hash of the intent
- * @param {string} data.governance_hash - SHA-256 hash of the governance decision
- * @param {string} data.authorization_hash - SHA-256 hash of the authorization
- * @param {string} data.execution_hash - SHA-256 hash of the execution result
+ * @param {string} data.intent_hash - SHA-256 hash of the intent (required)
+ * @param {string} data.execution_hash - SHA-256 hash of the execution (required)
+ * @param {string} [data.governance_hash] - SHA-256 hash of governance decision (optional)
+ * @param {string} [data.authorization_hash] - SHA-256 hash of authorization (optional)
  * @param {string} data.intent_id - UUID of the original intent
- * @param {string} data.action - Action type (e.g., "send_email")
+ * @param {string} data.action - Action type
  * @param {string} data.agent_id - Agent that requested the action
- * @param {string} data.authorized_by - Human or policy that authorized it
- * @param {string} [data.receipt_type="governed_action"] - Receipt classification
- * @param {object} [data.ingestion] - Ingestion provenance (v2.1)
- * @param {object} [data.identity_binding] - Ed25519 signer proof (v2.1)
+ * @param {string} [data.authorized_by] - Who authorized it (optional)
+ * @param {string} [data.receipt_type] - Receipt classification (defaults based on content)
+ * @param {object} [data.ingestion] - Ingestion provenance
+ * @param {object} [data.identity_binding] - Ed25519 signer proof
  * @returns {object} The complete receipt
  */
 export function generateReceipt(data) {
   const receiptId = randomUUID();
   const timestamp = new Date().toISOString();
-  const receiptType = data.receipt_type || "governed_action";
 
-  // The receipt hash covers the receipt ID, all preceding hashes, and timestamp
-  const receiptContent = JSON.stringify({
-    receipt_id: receiptId,
-    intent_hash: data.intent_hash,
-    governance_hash: data.governance_hash,
-    authorization_hash: data.authorization_hash,
-    execution_hash: data.execution_hash,
-    timestamp,
-  });
-  const receiptHash = sha256(receiptContent);
+  // Determine receipt type: if governance/authorization present, it's governed
+  const isGoverned = !!(data.governance_hash && data.authorization_hash);
+  const receiptType = data.receipt_type || (isGoverned ? "governed_action" : "action");
+
+  // Build chain order dynamically based on what's present
+  const chainOrder = buildChainOrder(data);
+
+  // Build the content object for hashing — only include present hashes
+  const receiptContent = { receipt_id: receiptId };
+  for (const field of chainOrder) {
+    if (field !== "receipt_hash") {
+      receiptContent[field] = data[field];
+    }
+  }
+  receiptContent.timestamp = timestamp;
+  const receiptHash = sha256(JSON.stringify(receiptContent));
 
   const receipt = {
     receipt_id: receiptId,
@@ -147,29 +154,23 @@ export function generateReceipt(data) {
     intent_id: data.intent_id,
     action: data.action,
     agent_id: data.agent_id,
-    authorized_by: data.authorized_by,
+    authorized_by: data.authorized_by || null,
     timestamp,
     hash_chain: {
       intent_hash: data.intent_hash,
-      governance_hash: data.governance_hash,
-      authorization_hash: data.authorization_hash,
+      governance_hash: data.governance_hash || null,
+      authorization_hash: data.authorization_hash || null,
       execution_hash: data.execution_hash,
       receipt_hash: receiptHash,
     },
     verification: {
       algorithm: "SHA-256",
-      chain_length: 5,
-      chain_order: [
-        "intent_hash",
-        "governance_hash",
-        "authorization_hash",
-        "execution_hash",
-        "receipt_hash",
-      ],
+      chain_length: chainOrder.length,
+      chain_order: chainOrder,
     },
   };
 
-  // v2.1: Ingestion provenance
+  // Optional v2.1+ fields
   if (data.ingestion) {
     receipt.ingestion = {
       source: data.ingestion.source,
@@ -179,7 +180,6 @@ export function generateReceipt(data) {
     };
   }
 
-  // v2.1: Identity binding
   if (data.identity_binding) {
     receipt.identity_binding = {
       signer_id: data.identity_binding.signer_id || null,
@@ -196,24 +196,29 @@ export function generateReceipt(data) {
 /**
  * Verify a receipt by recomputing the receipt hash from its components.
  *
- * This checks that the receipt_hash in the hash_chain is correctly computed
- * from the receipt_id, all preceding hashes, and the timestamp. It does NOT
- * verify the individual stage hashes (intent, governance, authorization,
- * execution) — those require the original data.
+ * Uses the receipt's own chain_order to determine which hashes to include
+ * in the verification. This supports both proof-layer (3-hash) and
+ * governed (5-hash) receipts.
  *
  * @param {object} receipt - A RIO Receipt object
- * @returns {object} Verification result with valid, computed_hash, stored_hash
+ * @returns {object} Verification result
  */
 export function verifyReceipt(receipt) {
-  const receiptContent = JSON.stringify({
-    receipt_id: receipt.receipt_id,
-    intent_hash: receipt.hash_chain.intent_hash,
-    governance_hash: receipt.hash_chain.governance_hash,
-    authorization_hash: receipt.hash_chain.authorization_hash,
-    execution_hash: receipt.hash_chain.execution_hash,
-    timestamp: receipt.timestamp,
-  });
-  const computedHash = sha256(receiptContent);
+  // Use the receipt's chain_order to rebuild the content
+  const chainOrder = receipt.verification?.chain_order || [
+    "intent_hash",
+    "execution_hash",
+    "receipt_hash",
+  ];
+
+  const receiptContent = { receipt_id: receipt.receipt_id };
+  for (const field of chainOrder) {
+    if (field !== "receipt_hash") {
+      receiptContent[field] = receipt.hash_chain[field];
+    }
+  }
+  receiptContent.timestamp = receipt.timestamp;
+  const computedHash = sha256(JSON.stringify(receiptContent));
   const storedHash = receipt.hash_chain.receipt_hash;
 
   return {
@@ -221,6 +226,6 @@ export function verifyReceipt(receipt) {
     computed_hash: computedHash,
     stored_hash: storedHash,
     receipt_id: receipt.receipt_id,
-    receipt_type: receipt.receipt_type || "governed_action",
+    receipt_type: receipt.receipt_type || "action",
   };
 }

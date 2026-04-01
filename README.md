@@ -1,22 +1,24 @@
 # RIO Receipt Protocol
 
-**Cryptographic proof for AI actions.**
+**Cryptographic proof for AI actions. Open standard. Zero dependencies.**
 
 ---
 
 ## What Is a RIO Receipt?
 
-A RIO Receipt is a cryptographic record of an AI action and any associated human approval, written to a tamper-evident ledger. It allows an organization to later prove exactly what an AI system did, when it did it, which system was responsible, whether a human approved it, and that the record has not been altered.
+A RIO Receipt is a cryptographic record of an AI action, written to a tamper-evident ledger. It allows an organization to later prove exactly what an AI system did, when it did it, which system was responsible, and that the record has not been altered.
 
-The RIO Receipt Protocol acts as a **"Layer 3" governance and proof layer** that sits beneath application logic and above human approvals, turning AI-assisted decisions and actions into verifiable, auditable records.
+The RIO Receipt Protocol acts as a **"Layer 3" proof layer** that sits beneath application logic, turning AI-assisted decisions and actions into verifiable, auditable records.
 
 **A standard RIO Receipt proves:**
 
 - What action was taken
 - Which AI or system initiated it
-- Whether a human approved it
 - When it happened
+- What the result was
 - That the record has not been altered
+
+When a governance layer is present (such as the full RIO platform), receipts can also prove whether a human approved the action and under what policy. But **the core protocol does not require governance or human approval** — it works as standalone proof infrastructure for any AI system.
 
 Any AI system — whether built on OpenAI, Anthropic, Google, Cohere, open-source models, or custom agents — can implement RIO Receipts to produce a verifiable audit trail.
 
@@ -24,15 +26,27 @@ Any AI system — whether built on OpenAI, Anthropic, Google, Cohere, open-sourc
 
 ## How It Works
 
+### Core Proof Layer (Open Standard)
+
+```
+Intent → Execution → Receipt → Ledger
+  ↓          ↓           ↓         ↓
+SHA-256   SHA-256     SHA-256   Hash Chain
+```
+
+An AI system proposes an action (intent). The action executes. A receipt is generated binding the intent hash and execution hash together. The receipt is written to a tamper-evident ledger. **Three hashes, one chain, complete proof.**
+
+### With Governance Extension (Optional)
+
 ```
 Intent → Governance → Authorization → Execution → Receipt → Ledger
   ↓          ↓             ↓              ↓           ↓         ↓
 SHA-256   SHA-256       SHA-256        SHA-256     SHA-256   Hash Chain
 ```
 
-Every stage of an AI action is hashed. The receipt binds all hashes together. The ledger chains receipts into a tamper-evident sequence. If anything is altered after the fact, the math breaks and the tampering is detectable.
+Systems that implement human approval workflows can add governance and authorization hashes. The receipt expands from a 3-hash chain to a 5-hash chain. Both types coexist in the same ledger.
 
-This is not a framework. It is not a product. It is a **protocol** — a set of rules for how receipts are structured, signed, chained, and verified. Any system can implement it.
+This is not a framework. It is not a product. It is a **protocol** — a set of rules for how receipts are structured, hashed, chained, and verified. Any system can implement it.
 
 ---
 
@@ -42,7 +56,7 @@ AI systems are making real decisions — sending emails, moving money, modifying
 
 Prompt-level guardrails are bypassable. Policy documents are advisory. Audit logs can be incomplete or fabricated after the fact. Without a proof layer that is architecturally separate from the AI itself, every deployed agent is a liability.
 
-The RIO Receipt Protocol gives every AI action a cryptographic receipt — a signed, hash-chained proof that the action was properly governed. The receipt is written to a tamper-evident ledger where any modification, deletion, insertion, or reordering is immediately detectable.
+The RIO Receipt Protocol gives every AI action a cryptographic receipt — a hash-chained proof that the action occurred as recorded. The receipt is written to a tamper-evident ledger where any modification, deletion, insertion, or reordering is immediately detectable.
 
 ---
 
@@ -51,7 +65,7 @@ The RIO Receipt Protocol gives every AI action a cryptographic receipt — a sig
 ```
 rio-receipt-protocol/
 ├── spec/                        # The protocol specification
-│   ├── receipt-schema.json      # JSON Schema for RIO Receipts (v2.1)
+│   ├── receipt-schema.json      # JSON Schema for RIO Receipts (v2.2)
 │   ├── ledger-format.md         # Ledger hash chain specification
 │   └── signing-rules.md         # Signing and verification rules
 ├── reference/                   # Reference implementation (Node.js, zero dependencies)
@@ -61,7 +75,7 @@ rio-receipt-protocol/
 ├── cli/                         # Command-line verifier tool
 │   └── verify.mjs               # rio-verify CLI
 ├── tests/                       # Conformance test suite
-│   └── conformance.test.mjs     # 45 tests across 8 categories
+│   └── conformance.test.mjs     # 29 tests across 8 categories
 ├── examples/                    # Usage examples
 │   └── basic-usage.mjs          # Complete flow: intent → receipt → ledger → verify
 └── package.json
@@ -81,7 +95,7 @@ cd rio-receipt-protocol
 node examples/basic-usage.mjs
 ```
 
-This walks through the complete flow: an AI agent proposes an action, governance evaluates it, authorization is granted, the action executes, a receipt is generated, the receipt is written to a ledger, and everything is verified.
+This demonstrates both receipt types: a **proof-layer receipt** (3-hash chain — just proof of what happened) and a **governed receipt** (5-hash chain — with governance evaluation and human approval). Both are written to the same ledger and verified.
 
 ### Run the Conformance Tests
 
@@ -89,7 +103,7 @@ This walks through the complete flow: an AI agent proposes an action, governance
 node tests/conformance.test.mjs
 ```
 
-45 tests across 8 categories: SHA-256 hashing, stage hash functions, receipt generation, receipt verification, ledger hash chain, tamper detection, cross-verification, and edge cases. Exit code 0 means the implementation conforms to the protocol.
+29 tests across 8 categories: proof-layer receipts, governed receipts, SHA-256 integrity, ledger hash chain, tamper detection, cross-verification, batch verification, and optional extensions. Exit code 0 means the implementation conforms to the protocol.
 
 ### Verify a Live Gateway
 
@@ -102,53 +116,84 @@ The CLI connects to a running RIO Gateway, checks its health, and verifies any a
 ### Use in Your Own Code
 
 ```javascript
-import { generateReceipt, verifyReceipt, hashIntent, hashGovernance,
-         hashAuthorization, hashExecution } from "@rio-protocol/receipt";
-import { createLedger } from "@rio-protocol/receipt/ledger";
-import { verifyChain } from "@rio-protocol/receipt/verifier";
+import { generateReceipt, verifyReceipt, hashIntent,
+         hashExecution } from "./reference/receipts.mjs";
+import { createLedger } from "./reference/ledger.mjs";
 
-// Hash each stage of the AI action
-const intentHash = hashIntent({ intent_id, action, agent_id, parameters, timestamp });
-const governanceHash = hashGovernance({ intent_id, status, risk_level, requires_approval, checks });
-const authorizationHash = hashAuthorization({ intent_id, decision, authorized_by, timestamp });
-const executionHash = hashExecution({ intent_id, action, result, connector, timestamp });
-
-// Generate the receipt
-const receipt = generateReceipt({
-  intent_hash: intentHash,
-  governance_hash: governanceHash,
-  authorization_hash: authorizationHash,
-  execution_hash: executionHash,
-  intent_id, action, agent_id, authorized_by,
+// 1. Hash the intent and execution
+const intentHash = hashIntent({
+  intent_id, action, agent_id, parameters, timestamp
+});
+const executionHash = hashExecution({
+  intent_id, action, result, connector, timestamp
 });
 
-// Verify the receipt
+// 2. Generate a proof-layer receipt (3-hash chain)
+const receipt = generateReceipt({
+  intent_hash: intentHash,
+  execution_hash: executionHash,
+  intent_id, action, agent_id,
+});
+
+// 3. Verify the receipt
 const result = verifyReceipt(receipt);
 console.log(result.valid); // true
 
-// Write to a ledger and verify the chain
+// 4. Write to a ledger and verify the chain
 const ledger = createLedger({ filePath: "./my-ledger.json" });
-ledger.append({ intent_id, action, agent_id, status: "executed", detail: "...",
-                receipt_hash: receipt.hash_chain.receipt_hash });
+ledger.append({
+  intent_id, action, agent_id,
+  status: "executed", detail: "Action completed",
+  receipt_hash: receipt.hash_chain.receipt_hash,
+});
 const chainResult = ledger.verifyChain();
 console.log(chainResult.valid); // true
 ```
+
+That's it. Three hashes, one receipt, one ledger entry. Your AI system now produces verifiable proof of every action.
 
 ---
 
 ## The Receipt
 
-A RIO Receipt is a JSON object that binds together the hashes of every stage in a governed AI action:
+### Proof-Layer Receipt (Core)
+
+The minimal receipt — proof of what happened, no governance required:
 
 ```json
 {
   "receipt_id": "8494b6e4-f50e-4788-9a3f-50296f276263",
-  "receipt_type": "governed_action",
+  "receipt_type": "action",
   "intent_id": "e3a19336-dd82-496f-812b-e6f1636e96f2",
   "action": "send_email",
   "agent_id": "copilot-agent-001",
-  "authorized_by": "POLICY:auto_approve_low_risk",
+  "authorized_by": null,
   "timestamp": "2026-04-01T20:15:00.000Z",
+  "hash_chain": {
+    "intent_hash": "a1b2c3...64 hex chars",
+    "governance_hash": null,
+    "authorization_hash": null,
+    "execution_hash": "def012...64 hex chars",
+    "receipt_hash": "345678...64 hex chars"
+  },
+  "verification": {
+    "algorithm": "SHA-256",
+    "chain_length": 3,
+    "chain_order": ["intent_hash", "execution_hash", "receipt_hash"]
+  }
+}
+```
+
+The `receipt_hash` is computed from the `receipt_id`, the intent and execution hashes, and the `timestamp`. Changing any field invalidates the hash.
+
+### Governed Receipt (Extension)
+
+When governance and human approval are present, the receipt expands:
+
+```json
+{
+  "receipt_type": "governed_action",
+  "authorized_by": "HUMAN:cfo@example.com",
   "hash_chain": {
     "intent_hash": "a1b2c3...64 hex chars",
     "governance_hash": "d4e5f6...64 hex chars",
@@ -165,9 +210,9 @@ A RIO Receipt is a JSON object that binds together the hashes of every stage in 
 }
 ```
 
-The `receipt_hash` is computed from the `receipt_id`, all four preceding hashes, and the `timestamp`. Changing any field invalidates the hash.
+Both receipt types coexist in the same ledger. The verifier handles both automatically.
 
-### v2.1 Extensions (Optional, Backward Compatible)
+### Optional Extensions (v2.2, Backward Compatible)
 
 **Ingestion Provenance** — tracks where the intent originated:
 
@@ -207,7 +252,7 @@ The ledger is an append-only, hash-chained sequence of entries. Each entry conta
 | `intent_id` | The intent this entry relates to |
 | `action` | The action type |
 | `agent_id` | The agent that requested the action |
-| `status` | Entry status (submitted, governed, authorized, executed, denied, blocked) |
+| `status` | Entry status (submitted, executed, denied, blocked) |
 | `detail` | Human-readable description |
 | `receipt_hash` | Hash of the associated receipt (if applicable) |
 
@@ -253,14 +298,14 @@ The conformance test suite (`tests/conformance.test.mjs`) validates 8 categories
 
 | Suite | Tests | What It Proves |
 |-------|-------|----------------|
-| SHA-256 Hashing | 4 | Hash function produces correct, deterministic, 64-char hex output |
-| Stage Hash Functions | 5 | Intent, governance, authorization, and execution hashes are valid |
-| Receipt Generation | 8 | Receipts contain all required fields, types, and optional v2.1 extensions |
-| Receipt Verification | 8 | Valid receipts pass; tampered receipts fail; batch verification works |
-| Ledger Hash Chain | 6 | Genesis linkage, multi-entry chains, and standalone verifier agreement |
-| Tamper Detection | 5 | Modification, hash tampering, insertion, deletion, and reordering are caught |
-| Cross-Verification | 3 | Receipt-to-ledger matching and mismatch detection |
-| Edge Cases | 5 | v2.1 fields, backward compatibility, empty chains, invalid input |
+| Proof-Layer Receipts | 5 | Core 3-hash receipts generate and verify correctly |
+| Governed Receipts | 4 | Extended 5-hash receipts with governance/authorization |
+| Hash Integrity | 5 | SHA-256 produces correct, deterministic output; tampering detected |
+| Ledger Operations | 5 | Genesis linkage, multi-entry chains, standalone verifier agreement |
+| Cross-Verification | 2 | Receipt-to-ledger matching and mismatch detection |
+| Batch Verification | 2 | Multi-receipt verification with tamper detection |
+| Mixed Receipt Types | 2 | Proof-layer and governed receipts coexist in one ledger |
+| Optional Extensions | 3 | Ingestion provenance, identity binding, backward compatibility |
 
 Any implementation of the RIO Receipt Protocol can run these tests to prove conformance. The test suite is the contract.
 
@@ -268,28 +313,48 @@ Any implementation of the RIO Receipt Protocol can run these tests to prove conf
 
 ## Who This Is For
 
-**Enterprise teams** deploying AI agents that need cryptographic audit trails for compliance (SOC 2, ISO 27001, GDPR Article 22, EU AI Act).
+**Any team deploying AI agents** that needs to prove what their AI systems did. The proof layer works regardless of which AI provider, framework, or orchestration system you use.
 
-**AI platform builders** who want to add verifiable governance to their agent frameworks without building the proof layer from scratch.
+**Enterprise teams** that need cryptographic audit trails for compliance (SOC 2, ISO 27001, GDPR Article 22, EU AI Act).
 
-**Consultants and integrators** building governed AI workflows for clients who need to prove what their AI systems did.
+**AI platform builders** who want to add verifiable proof to their agent frameworks without building the proof layer from scratch.
+
+**Consultants and integrators** building AI workflows for clients who need accountability and audit trails.
 
 **Auditors and regulators** who need to independently verify AI action records without trusting the system that produced them.
 
 ---
 
+## What You Can Build With This
+
+- **Audit trail for AI agents** — Every action your AI takes gets a receipt. Every receipt goes on the ledger. You can prove the full history.
+- **Compliance infrastructure** — Plug receipts into your SOC 2 / ISO 27001 / EU AI Act evidence pipeline.
+- **Customer-facing proof** — Show your customers verifiable proof of what your AI did on their behalf.
+- **Multi-agent accountability** — When multiple AI agents collaborate, each action gets its own receipt. The ledger shows who did what.
+- **Governance layer** (with extension) — Add human approval workflows on top of the proof layer. The full RIO platform does this.
+
+---
+
 ## Relationship to the RIO System
 
-This protocol is the open proof layer. The [RIO System](https://github.com/bkr1297-RIO/rio-system) is the full governance platform built on top of it:
+This protocol is the **open proof layer**. The [RIO System](https://github.com/bkr1297-RIO/rio-system) is the full governance platform built on top of it:
 
 | Layer | What It Does | Status |
 |-------|-------------|--------|
-| **RIO Receipt Protocol** (this repo) | Receipt schema, ledger, verifier, conformance tests | Open standard |
+| **RIO Receipt Protocol** (this repo) | Receipt schema, ledger, verifier, conformance tests | **Open standard** |
 | **RIO Gateway** | Full governance pipeline with policy engine, RBAC, Ed25519 signing | Reference implementation |
 | **RIO Corpus** | Constitutional governance documents, policies, role definitions | Governing framework |
 | **ONE Interface** | Human-in-the-loop approval, dashboard, agent management | Commercial platform |
 
 You can use the receipt protocol without the gateway. You can use the gateway without ONE. Each layer is independently useful.
+
+In simple terms:
+- **Receipts prove** (open — this repo)
+- **Ledger remembers** (open — this repo)
+- AI proposes (application layer)
+- Governance decides (commercial)
+- Humans approve when required (commercial)
+- Connectors execute (commercial)
 
 ---
 
@@ -303,9 +368,9 @@ The protocol provides the following security guarantees:
 
 **Independent verification** — Any third party can verify receipts and chains using only the verifier and the data. No access to the original system is required.
 
-**Non-repudiation** (with Ed25519) — When identity binding is used, the signer cannot deny having authorized the action.
+**Non-repudiation** (with Ed25519 extension) — When identity binding is used, the signer cannot deny having authorized the action.
 
-**Backward compatibility** — v2.1 extensions (ingestion, identity_binding) are optional. v2.0 receipts remain valid.
+**Backward compatibility** — v2.2 extensions (ingestion, identity_binding, governed receipts) are optional. Core proof-layer receipts remain valid.
 
 ---
 
@@ -313,7 +378,7 @@ The protocol provides the following security guarantees:
 
 The formal protocol specifications are in the `spec/` directory:
 
-- **[receipt-schema.json](spec/receipt-schema.json)** — JSON Schema defining the receipt format, all fields, types, and constraints
+- **[receipt-schema.json](spec/receipt-schema.json)** — JSON Schema defining the receipt format, required and optional fields, types, and constraints
 - **[ledger-format.md](spec/ledger-format.md)** — Ledger entry structure, hash chain rules, genesis hash, canonical field ordering
 - **[signing-rules.md](spec/signing-rules.md)** — Signing algorithms, key management, verification procedures, Ed25519 requirements
 

@@ -28,9 +28,9 @@ Implementations MUST NOT use MD5, SHA-1, or any other hash algorithm for receipt
 
 ## 3. Receipt Hash Chain
 
-Each receipt contains a `hash_chain` object with five hashes, computed in order:
+Each receipt contains a `hash_chain` object with hashes computed in order. The **core proof layer** requires two hashes (intent + execution). The **governance extension** adds two more (governance + authorization). All receipts include a final receipt hash.
 
-### 3.1 Intent Hash
+### 3.1 Intent Hash (REQUIRED)
 
 Computed from the canonical intent object:
 
@@ -44,9 +44,9 @@ Computed from the canonical intent object:
 }
 ```
 
-### 3.2 Governance Hash
+### 3.2 Governance Hash (OPTIONAL — Governance Extension)
 
-Computed from the canonical governance decision:
+Present only when a governance layer evaluates the intent. Computed from the canonical governance decision:
 
 ```json
 {
@@ -58,9 +58,9 @@ Computed from the canonical governance decision:
 }
 ```
 
-### 3.3 Authorization Hash
+### 3.3 Authorization Hash (OPTIONAL — Governance Extension)
 
-Computed from the canonical authorization record:
+Present only when human or policy authorization is required. Computed from the canonical authorization record:
 
 ```json
 {
@@ -72,7 +72,7 @@ Computed from the canonical authorization record:
 }
 ```
 
-### 3.4 Execution Hash
+### 3.4 Execution Hash (REQUIRED)
 
 Computed from the canonical execution record:
 
@@ -86,9 +86,22 @@ Computed from the canonical execution record:
 }
 ```
 
-### 3.5 Receipt Hash
+### 3.5 Receipt Hash (REQUIRED)
 
-Computed from the receipt metadata plus all preceding hashes:
+Computed from the receipt metadata plus all preceding hashes that are present. The receipt's `verification.chain_order` array specifies which hashes are included.
+
+**Proof-layer receipt (3-hash):**
+
+```json
+{
+  "receipt_id": "<receipt_id>",
+  "intent_hash": "<intent_hash>",
+  "execution_hash": "<execution_hash>",
+  "timestamp": "<timestamp>"
+}
+```
+
+**Governed receipt (5-hash):**
 
 ```json
 {
@@ -193,6 +206,6 @@ An implementation conforms to this specification if:
 
 1. All hashes use SHA-256 with lowercase hex encoding
 2. Canonical JSON follows the exact field order specified in Section 3
-3. Receipt hashes are correctly computed from the five-stage chain
+3. Receipt hashes are correctly computed from the chain (3-hash for proof-layer, 5-hash for governed)
 4. If Ed25519 signing is implemented, signatures follow Section 4
 5. Key management follows the requirements in Section 5

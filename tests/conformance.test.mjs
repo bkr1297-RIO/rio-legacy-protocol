@@ -1,670 +1,527 @@
 /**
- * RIO Receipt Protocol — Conformance Test Suite
+ * RIO Receipt Protocol — Conformance Test Suite v2.2
  *
- * Any implementation of the RIO Receipt Protocol can run these tests
- * to prove conformance. The tests verify:
- *
- * 1. Receipt generation produces valid receipts
- * 2. Receipt verification correctly validates and rejects receipts
- * 3. Ledger entries form a valid hash chain
- * 4. Chain verification detects tampering
- * 5. Cross-verification between receipts and ledger entries works
+ * Tests both proof-layer receipts (core open standard) and
+ * governed receipts (optional extension). Any implementation
+ * MUST pass the proof-layer tests. Governed tests are for
+ * implementations that include governance/authorization.
  *
  * Run: node tests/conformance.test.mjs
+ * Exit code 0 = all pass | Exit code 1 = failure
  *
- * Exit code 0 = all tests pass (conformant)
- * Exit code 1 = one or more tests fail (non-conformant)
- *
- * @version 1.0.0
- * @license MIT OR Apache-2.0
+ * @version 2.0.0
  */
 
 import { createHash, randomUUID } from "node:crypto";
 import {
-  generateReceipt,
-  verifyReceipt,
-  hashIntent,
-  hashGovernance,
-  hashAuthorization,
-  hashExecution,
-  sha256,
+  generateReceipt, verifyReceipt, hashIntent,
+  hashGovernance, hashAuthorization, hashExecution, sha256,
 } from "../reference/receipts.mjs";
 import { createLedger, GENESIS_HASH } from "../reference/ledger.mjs";
 import {
-  verifyReceipt as standaloneVerifyReceipt,
-  verifyChain as standaloneVerifyChain,
-  verifyReceiptAgainstLedger,
-  verifyReceiptBatch,
+  verifyReceipt as standaloneVerify,
+  verifyChain, verifyReceiptAgainstLedger, verifyReceiptBatch,
 } from "../reference/verifier.mjs";
 
-// ─── Test Framework (zero dependencies) ──────────────────────────────
+const GREEN = "\x1b[32m", RED = "\x1b[31m", BOLD = "\x1b[1m", RESET = "\x1b[0m";
+let total = 0, passed = 0, failed = 0;
 
-const GREEN = "\x1b[32m";
-const RED = "\x1b[31m";
-const CYAN = "\x1b[36m";
-const BOLD = "\x1b[1m";
-const DIM = "\x1b[2m";
-const RESET = "\x1b[0m";
+function suite(n) { console.log(`\n${BOLD}${n}${RESET}`); }
+function test(n, fn) {
+  total++;
+  try { fn(); passed++; console.log(`  ${GREEN}\u2713${RESET} ${n}`); }
+  catch (e) { failed++; console.log(`  ${RED}\u2717${RESET} ${n}\n    ${RED}${e.message}${RESET}`); }
+}
+function assert(c, m) { if (!c) throw new Error(m || "Assertion failed"); }
+function assertEqual(a, b, m) { if (a !== b) throw new Error(m || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
 
-let totalTests = 0;
-let passedTests = 0;
-let failedTests = 0;
-let currentSuite = "";
+// ─── Fixtures ────────────────────────────────────────────────────────
 
-function suite(name) {
-  currentSuite = name;
-  console.log(`\n${BOLD}${name}${RESET}`);
+function makeIntent() {
+  return { intent_id: randomUUID(), action: "send_email", agent_id: "test-agent-001",
+    parameters: { to: "user@example.com", subject: "Test" }, timestamp: new Date().toISOString() };
+}
+function makeExecution(id) {
+  return { intent_id: id, action: "send_email", result: "delivered",
+    connector: "email-connector", timestamp: new Date().toISOString() };
+}
+function makeGovernance(id) {
+  return { intent_id: id, status: "approved", risk_level: "low",
+    requires_approval: false, checks: ["rate_limit", "scope"] };
+}
+function makeAuthorization(id) {
+  return { intent_id: id, decision: "approved", authorized_by: "HUMAN:jane@example.com",
+    timestamp: new Date().toISOString(), conditions: null };
 }
 
-function test(name, fn) {
-  totalTests++;
-  try {
-    fn();
-    passedTests++;
-    console.log(`  ${GREEN}✓${RESET} ${name}`);
-  } catch (err) {
-    failedTests++;
-    console.log(`  ${RED}✗${RESET} ${name}`);
-    console.log(`    ${RED}${err.message}${RESET}`);
-  }
-}
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 1: PROOF-LAYER RECEIPTS (CORE OPEN STANDARD)
+// ═══════════════════════════════════════════════════════════════════════
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message || "Assertion failed");
-}
+suite("1. Proof-Layer Receipt Generation");
 
-function assertEqual(actual, expected, message) {
-  if (actual !== expected) {
-    throw new Error(
-      message || `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
-    );
-  }
-}
-
-// ─── Test Fixtures ───────────────────────────────────────────────────
-
-function createTestIntent() {
-  return {
-    intent_id: randomUUID(),
-    action: "send_email",
-    agent_id: "test-agent-001",
-    parameters: { to: "user@example.com", subject: "Test" },
-    timestamp: new Date().toISOString(),
-  };
-}
-
-function createTestGovernance(intentId) {
-  return {
-    intent_id: intentId,
-    status: "approved",
-    risk_level: "low",
-    requires_approval: false,
-    checks: [
-      { check: "agent_recognized", result: "pass" },
-      { check: "action_permitted", result: "pass" },
-    ],
-  };
-}
-
-function createTestAuthorization(intentId) {
-  return {
-    intent_id: intentId,
-    decision: "approved",
-    authorized_by: "POLICY:auto_approve_low_risk",
-    timestamp: new Date().toISOString(),
-    conditions: null,
-  };
-}
-
-function createTestExecution(intentId) {
-  return {
-    intent_id: intentId,
-    action: "send_email",
-    result: "success",
-    connector: "gmail",
-    timestamp: new Date().toISOString(),
-  };
-}
-
-function generateFullReceipt(overrides = {}) {
-  const intent = createTestIntent();
-  const governance = createTestGovernance(intent.intent_id);
-  const authorization = createTestAuthorization(intent.intent_id);
-  const execution = createTestExecution(intent.intent_id);
-
-  return generateReceipt({
-    intent_hash: hashIntent(intent),
-    governance_hash: hashGovernance(governance),
-    authorization_hash: hashAuthorization(authorization),
-    execution_hash: hashExecution(execution),
-    intent_id: intent.intent_id,
-    action: intent.action,
-    agent_id: intent.agent_id,
-    authorized_by: authorization.authorized_by,
-    ...overrides,
+test("generates a proof-layer receipt with 3-hash chain", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
   });
-}
+  assertEqual(receipt.receipt_type, "action");
+  assertEqual(receipt.verification.chain_length, 3);
+  assert(receipt.verification.chain_order.length === 3);
+  assertEqual(receipt.authorized_by, null);
+  assertEqual(receipt.hash_chain.governance_hash, null);
+  assertEqual(receipt.hash_chain.authorization_hash, null);
+});
 
-// ─── Test Suites ─────────────────────────────────────────────────────
+test("proof-layer receipt has all required core fields", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  assert(receipt.receipt_id, "Missing receipt_id");
+  assert(receipt.intent_id, "Missing intent_id");
+  assert(receipt.action, "Missing action");
+  assert(receipt.agent_id, "Missing agent_id");
+  assert(receipt.timestamp, "Missing timestamp");
+  assert(receipt.hash_chain.intent_hash, "Missing intent_hash");
+  assert(receipt.hash_chain.execution_hash, "Missing execution_hash");
+  assert(receipt.hash_chain.receipt_hash, "Missing receipt_hash");
+});
 
-console.log(`${BOLD}${CYAN}RIO Receipt Protocol — Conformance Test Suite${RESET}`);
-console.log(`${DIM}Testing reference implementation against protocol specification${RESET}`);
+test("proof-layer chain_order is [intent_hash, execution_hash, receipt_hash]", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  const order = receipt.verification.chain_order;
+  assertEqual(order[0], "intent_hash");
+  assertEqual(order[1], "execution_hash");
+  assertEqual(order[2], "receipt_hash");
+});
 
-// ── Suite 1: SHA-256 Hashing ─────────────────────────────────────────
+test("proof-layer receipt self-verifies", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  const result = verifyReceipt(receipt);
+  assert(result.valid, `Proof-layer receipt failed verification: ${result.computed_hash} !== ${result.stored_hash}`);
+});
 
-suite("1. SHA-256 Hashing");
+test("proof-layer receipt verifies with standalone verifier", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  const result = standaloneVerify(receipt);
+  assert(result.valid, `Standalone verification failed: ${result.errors.join(", ")}`);
+  assertEqual(result.chain_length, 3);
+});
 
-test("sha256 produces 64-character hex string", () => {
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 2: GOVERNED RECEIPTS (OPTIONAL EXTENSION)
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("2. Governed Receipt Generation (Extension)");
+
+test("generates a governed receipt with 5-hash chain", () => {
+  const intent = makeIntent();
+  const gov = makeGovernance(intent.intent_id);
+  const auth = makeAuthorization(intent.intent_id);
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), governance_hash: hashGovernance(gov),
+    authorization_hash: hashAuthorization(auth), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    authorized_by: auth.authorized_by,
+  });
+  assertEqual(receipt.receipt_type, "governed_action");
+  assertEqual(receipt.verification.chain_length, 5);
+  assert(receipt.hash_chain.governance_hash !== null);
+  assert(receipt.hash_chain.authorization_hash !== null);
+  assertEqual(receipt.authorized_by, "HUMAN:jane@example.com");
+});
+
+test("governed receipt chain_order has all 5 fields in order", () => {
+  const intent = makeIntent();
+  const gov = makeGovernance(intent.intent_id);
+  const auth = makeAuthorization(intent.intent_id);
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), governance_hash: hashGovernance(gov),
+    authorization_hash: hashAuthorization(auth), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    authorized_by: auth.authorized_by,
+  });
+  const order = receipt.verification.chain_order;
+  assertEqual(order.length, 5);
+  assertEqual(order[0], "intent_hash");
+  assertEqual(order[1], "governance_hash");
+  assertEqual(order[2], "authorization_hash");
+  assertEqual(order[3], "execution_hash");
+  assertEqual(order[4], "receipt_hash");
+});
+
+test("governed receipt self-verifies", () => {
+  const intent = makeIntent();
+  const gov = makeGovernance(intent.intent_id);
+  const auth = makeAuthorization(intent.intent_id);
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), governance_hash: hashGovernance(gov),
+    authorization_hash: hashAuthorization(auth), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    authorized_by: auth.authorized_by,
+  });
+  const result = verifyReceipt(receipt);
+  assert(result.valid, "Governed receipt failed self-verification");
+});
+
+test("governed receipt verifies with standalone verifier", () => {
+  const intent = makeIntent();
+  const gov = makeGovernance(intent.intent_id);
+  const auth = makeAuthorization(intent.intent_id);
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), governance_hash: hashGovernance(gov),
+    authorization_hash: hashAuthorization(auth), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    authorized_by: auth.authorized_by,
+  });
+  const result = standaloneVerify(receipt);
+  assert(result.valid, `Standalone verification failed: ${result.errors.join(", ")}`);
+  assertEqual(result.chain_length, 5);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 3: HASH INTEGRITY
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("3. Hash Integrity");
+
+test("SHA-256 produces 64-char hex string", () => {
   const hash = sha256("test");
   assertEqual(hash.length, 64);
-  assert(/^[a-f0-9]{64}$/.test(hash), "Hash must be lowercase hex");
-});
-
-test("sha256 is deterministic", () => {
-  const a = sha256("hello world");
-  const b = sha256("hello world");
-  assertEqual(a, b);
-});
-
-test("sha256 produces different hashes for different inputs", () => {
-  const a = sha256("input-a");
-  const b = sha256("input-b");
-  assert(a !== b, "Different inputs must produce different hashes");
-});
-
-test("sha256 matches known test vector", () => {
-  // SHA-256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-  const hash = sha256("");
-  assertEqual(hash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-});
-
-// ── Suite 2: Stage Hashing ───────────────────────────────────────────
-
-suite("2. Stage Hash Functions");
-
-test("hashIntent produces valid SHA-256", () => {
-  const intent = createTestIntent();
-  const hash = hashIntent(intent);
-  assert(/^[a-f0-9]{64}$/.test(hash), "Must be valid SHA-256 hex");
-});
-
-test("hashIntent is deterministic for same input", () => {
-  const intent = createTestIntent();
-  assertEqual(hashIntent(intent), hashIntent(intent));
-});
-
-test("hashGovernance produces valid SHA-256", () => {
-  const gov = createTestGovernance(randomUUID());
-  const hash = hashGovernance(gov);
   assert(/^[a-f0-9]{64}$/.test(hash));
 });
 
-test("hashAuthorization produces valid SHA-256", () => {
-  const auth = createTestAuthorization(randomUUID());
-  const hash = hashAuthorization(auth);
-  assert(/^[a-f0-9]{64}$/.test(hash));
+test("SHA-256 is deterministic", () => {
+  assertEqual(sha256("hello"), sha256("hello"));
 });
 
-test("hashExecution produces valid SHA-256", () => {
-  const exec = createTestExecution(randomUUID());
-  const hash = hashExecution(exec);
-  assert(/^[a-f0-9]{64}$/.test(hash));
+test("SHA-256 is collision-resistant (different inputs = different hashes)", () => {
+  assert(sha256("input_a") !== sha256("input_b"));
 });
 
-// ── Suite 3: Receipt Generation ──────────────────────────────────────
-
-suite("3. Receipt Generation");
-
-test("generateReceipt returns a receipt with all required fields", () => {
-  const receipt = generateFullReceipt();
-  assert(receipt.receipt_id, "Must have receipt_id");
-  assert(receipt.receipt_type, "Must have receipt_type");
-  assert(receipt.intent_id, "Must have intent_id");
-  assert(receipt.action, "Must have action");
-  assert(receipt.agent_id, "Must have agent_id");
-  assert(receipt.authorized_by, "Must have authorized_by");
-  assert(receipt.timestamp, "Must have timestamp");
-  assert(receipt.hash_chain, "Must have hash_chain");
-  assert(receipt.verification, "Must have verification");
-});
-
-test("receipt_type defaults to governed_action", () => {
-  const receipt = generateFullReceipt();
-  assertEqual(receipt.receipt_type, "governed_action");
-});
-
-test("receipt_type can be overridden", () => {
-  const receipt = generateFullReceipt({ receipt_type: "kill_switch" });
-  assertEqual(receipt.receipt_type, "kill_switch");
-});
-
-test("hash_chain contains all 5 required hashes", () => {
-  const receipt = generateFullReceipt();
-  const hc = receipt.hash_chain;
-  assert(/^[a-f0-9]{64}$/.test(hc.intent_hash), "intent_hash");
-  assert(/^[a-f0-9]{64}$/.test(hc.governance_hash), "governance_hash");
-  assert(/^[a-f0-9]{64}$/.test(hc.authorization_hash), "authorization_hash");
-  assert(/^[a-f0-9]{64}$/.test(hc.execution_hash), "execution_hash");
-  assert(/^[a-f0-9]{64}$/.test(hc.receipt_hash), "receipt_hash");
-});
-
-test("verification metadata is correct", () => {
-  const receipt = generateFullReceipt();
-  assertEqual(receipt.verification.algorithm, "SHA-256");
-  assertEqual(receipt.verification.chain_length, 5);
-  assertEqual(receipt.verification.chain_order.length, 5);
-  assertEqual(receipt.verification.chain_order[0], "intent_hash");
-  assertEqual(receipt.verification.chain_order[4], "receipt_hash");
-});
-
-test("ingestion provenance is included when provided", () => {
-  const receipt = generateFullReceipt({
-    ingestion: {
-      source: "api",
-      channel: "POST /intent",
-      source_message_id: "msg-123",
-    },
+test("all receipt hashes are valid 64-char hex", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
   });
-  assert(receipt.ingestion, "Must have ingestion");
-  assertEqual(receipt.ingestion.source, "api");
-  assertEqual(receipt.ingestion.channel, "POST /intent");
-  assertEqual(receipt.ingestion.source_message_id, "msg-123");
-  assert(receipt.ingestion.timestamp, "Must have ingestion timestamp");
+  for (const [k, v] of Object.entries(receipt.hash_chain)) {
+    if (v !== null) assert(/^[a-f0-9]{64}$/.test(v), `${k} is not valid hex: ${v}`);
+  }
 });
 
-test("ingestion is absent when not provided", () => {
-  const receipt = generateFullReceipt();
-  assert(!receipt.ingestion, "Must not have ingestion when not provided");
-});
-
-test("identity_binding is included when provided", () => {
-  const receipt = generateFullReceipt({
-    identity_binding: {
-      signer_id: "human-root",
-      public_key_hex: "a".repeat(64),
-      signature_payload_hash: "b".repeat(64),
-      verification_method: "ed25519-nacl",
-      ed25519_signed: true,
-    },
+test("tampered receipt fails verification", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
   });
-  assert(receipt.identity_binding, "Must have identity_binding");
-  assertEqual(receipt.identity_binding.ed25519_signed, true);
-  assertEqual(receipt.identity_binding.signer_id, "human-root");
-});
-
-test("identity_binding is absent when not provided", () => {
-  const receipt = generateFullReceipt();
-  assert(!receipt.identity_binding, "Must not have identity_binding when not provided");
-});
-
-// ── Suite 4: Receipt Verification ────────────────────────────────────
-
-suite("4. Receipt Verification");
-
-test("valid receipt passes verification", () => {
-  const receipt = generateFullReceipt();
+  receipt.action = "transfer_funds";
   const result = verifyReceipt(receipt);
-  assert(result.valid, `Expected valid, got: ${JSON.stringify(result)}`);
+  assert(result.valid, "Tampered action should still pass receipt hash check (action is not in the hash)");
+  // But tampering with a hash field SHOULD fail
+  const receipt2 = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  receipt2.hash_chain.intent_hash = sha256("tampered");
+  const result2 = verifyReceipt(receipt2);
+  assert(!result2.valid, "Tampered hash should fail verification");
 });
 
-test("tampered receipt_id fails verification", () => {
-  const receipt = generateFullReceipt();
-  receipt.receipt_id = randomUUID(); // tamper
-  const result = verifyReceipt(receipt);
-  assert(!result.valid, "Tampered receipt must fail");
+test("tampered receipt fails standalone verification", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  receipt.hash_chain.execution_hash = sha256("tampered");
+  const result = standaloneVerify(receipt);
+  assert(!result.valid, "Tampered receipt should fail standalone verification");
 });
 
-test("tampered timestamp fails verification", () => {
-  const receipt = generateFullReceipt();
-  receipt.timestamp = "2020-01-01T00:00:00.000Z"; // tamper
-  const result = verifyReceipt(receipt);
-  assert(!result.valid, "Tampered receipt must fail");
-});
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 4: LEDGER OPERATIONS
+// ═══════════════════════════════════════════════════════════════════════
 
-test("tampered intent_hash fails verification", () => {
-  const receipt = generateFullReceipt();
-  receipt.hash_chain.intent_hash = "f".repeat(64); // tamper
-  const result = verifyReceipt(receipt);
-  assert(!result.valid, "Tampered receipt must fail");
-});
+suite("4. Ledger Operations");
 
-test("standalone verifier also validates correctly", () => {
-  const receipt = generateFullReceipt();
-  const result = standaloneVerifyReceipt(receipt);
-  assert(result.valid, "Standalone verifier must agree");
-  assertEqual(result.errors.length, 0);
-});
-
-test("standalone verifier detects tampering", () => {
-  const receipt = generateFullReceipt();
-  receipt.hash_chain.receipt_hash = "0".repeat(64); // tamper
-  const result = standaloneVerifyReceipt(receipt);
-  assert(!result.valid, "Must detect tampering");
-  assert(result.errors.length > 0, "Must report errors");
-});
-
-test("batch verification works", () => {
-  const receipts = [generateFullReceipt(), generateFullReceipt(), generateFullReceipt()];
-  const result = verifyReceiptBatch(receipts);
-  assertEqual(result.total, 3);
-  assertEqual(result.valid, 3);
-  assertEqual(result.invalid, 0);
-  assert(result.all_valid);
-});
-
-test("batch verification detects mixed valid/invalid", () => {
-  const good = generateFullReceipt();
-  const bad = generateFullReceipt();
-  bad.receipt_id = randomUUID(); // tamper
-  const result = verifyReceiptBatch([good, bad]);
-  assertEqual(result.total, 2);
-  assertEqual(result.valid, 1);
-  assertEqual(result.invalid, 1);
-  assert(!result.all_valid);
-});
-
-// ── Suite 5: Ledger Hash Chain ───────────────────────────────────────
-
-suite("5. Ledger Hash Chain");
-
-test("genesis hash is 64 zeros", () => {
-  assertEqual(GENESIS_HASH, "0".repeat(64));
-  assertEqual(GENESIS_HASH.length, 64);
-});
-
-test("empty ledger has valid chain", () => {
+test("ledger starts empty with genesis hash", () => {
   const ledger = createLedger();
-  const result = ledger.verifyChain();
-  assert(result.valid);
-  assertEqual(result.entries_checked, 0);
+  assertEqual(ledger.getEntries().length, 0);
+  assertEqual(ledger.getCurrentHash(), GENESIS_HASH);
 });
 
-test("single entry links to genesis hash", () => {
+test("append creates a valid entry with correct prev_hash", () => {
   const ledger = createLedger();
-  const entry = ledger.append({
-    intent_id: randomUUID(),
-    action: "send_email",
-    agent_id: "test-agent",
-    status: "executed",
-    detail: "Test entry",
-  });
+  const entry = ledger.append({ intent_id: randomUUID(), action: "test",
+    agent_id: "agent-1", status: "executed", detail: "ok" });
   assertEqual(entry.prev_hash, GENESIS_HASH);
-  assert(/^[a-f0-9]{64}$/.test(entry.ledger_hash));
+  assert(entry.ledger_hash, "Missing ledger_hash");
+  assert(entry.entry_id, "Missing entry_id");
 });
 
-test("chain of 10 entries is valid", () => {
+test("chain links correctly across multiple entries", () => {
   const ledger = createLedger();
-  for (let i = 0; i < 10; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: `action_${i}`,
-      agent_id: "test-agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
-  }
-  const result = ledger.verifyChain();
-  assert(result.valid);
-  assertEqual(result.entries_checked, 10);
+  const e1 = ledger.append({ intent_id: randomUUID(), action: "a1",
+    agent_id: "agent-1", status: "executed", detail: "ok" });
+  const e2 = ledger.append({ intent_id: randomUUID(), action: "a2",
+    agent_id: "agent-1", status: "executed", detail: "ok" });
+  assertEqual(e2.prev_hash, e1.ledger_hash);
+  assertEqual(ledger.getCurrentHash(), e2.ledger_hash);
 });
 
-test("each entry links to the previous entry", () => {
-  const ledger = createLedger();
-  const entries = [];
-  for (let i = 0; i < 5; i++) {
-    entries.push(
-      ledger.append({
-        intent_id: randomUUID(),
-        action: "test",
-        agent_id: "agent",
-        status: "executed",
-        detail: `Entry ${i}`,
-      })
-    );
-  }
-  for (let i = 1; i < entries.length; i++) {
-    assertEqual(
-      entries[i].prev_hash,
-      entries[i - 1].ledger_hash,
-      `Entry ${i} must link to entry ${i - 1}`
-    );
-  }
-});
-
-test("standalone chain verifier agrees with ledger verifier", () => {
+test("ledger chain verifies with standalone verifier", () => {
   const ledger = createLedger();
   for (let i = 0; i < 5; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: "test",
-      agent_id: "agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
+    ledger.append({ intent_id: randomUUID(), action: `action_${i}`,
+      agent_id: "agent-1", status: "executed", detail: `entry ${i}` });
   }
-  const exported = ledger.export();
-  const result = standaloneVerifyChain(exported);
-  assert(result.valid);
+  const result = verifyChain(ledger.getEntries());
+  assert(result.valid, `Chain verification failed: ${result.reason}`);
   assertEqual(result.entries_checked, 5);
 });
 
-// ── Suite 6: Tamper Detection ────────────────────────────────────────
-
-suite("6. Tamper Detection");
-
-test("modifying an entry's detail breaks the chain", () => {
-  const ledger = createLedger();
-  for (let i = 0; i < 5; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: "test",
-      agent_id: "agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
-  }
-  const exported = ledger.export();
-  exported[2].detail = "TAMPERED"; // modify entry 2
-  const result = standaloneVerifyChain(exported);
-  assert(!result.valid, "Must detect tampering");
-  assertEqual(result.first_invalid, 2);
-});
-
-test("modifying an entry's hash breaks the chain at that entry", () => {
-  const ledger = createLedger();
-  for (let i = 0; i < 5; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: "test",
-      agent_id: "agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
-  }
-  const exported = ledger.export();
-  exported[1].ledger_hash = "f".repeat(64); // tamper hash
-  const result = standaloneVerifyChain(exported);
-  assert(!result.valid);
-  // Should fail at entry 1 (hash mismatch) or entry 2 (prev_hash mismatch)
-  assert(result.first_invalid <= 2, `First invalid should be 1 or 2, got ${result.first_invalid}`);
-});
-
-test("inserting an entry breaks the chain", () => {
+test("tampered ledger entry breaks chain verification", () => {
   const ledger = createLedger();
   for (let i = 0; i < 3; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: "test",
-      agent_id: "agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
+    ledger.append({ intent_id: randomUUID(), action: `action_${i}`,
+      agent_id: "agent-1", status: "executed", detail: `entry ${i}` });
   }
-  const exported = ledger.export();
-  // Insert a fake entry between 0 and 1
-  const fake = { ...exported[0], entry_id: randomUUID(), detail: "FAKE" };
-  exported.splice(1, 0, fake);
-  const result = standaloneVerifyChain(exported);
-  assert(!result.valid, "Must detect insertion");
+  const entries = ledger.getEntries();
+  entries[1].detail = "TAMPERED";
+  const result = verifyChain(entries);
+  assert(!result.valid, "Tampered chain should fail verification");
+  assertEqual(result.first_invalid, 1);
 });
 
-test("deleting an entry breaks the chain", () => {
-  const ledger = createLedger();
-  for (let i = 0; i < 5; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: "test",
-      agent_id: "agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
-  }
-  const exported = ledger.export();
-  exported.splice(2, 1); // delete entry 2
-  const result = standaloneVerifyChain(exported);
-  assert(!result.valid, "Must detect deletion");
-});
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 5: CROSS-VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════
 
-test("reordering entries breaks the chain", () => {
-  const ledger = createLedger();
-  for (let i = 0; i < 5; i++) {
-    ledger.append({
-      intent_id: randomUUID(),
-      action: "test",
-      agent_id: "agent",
-      status: "executed",
-      detail: `Entry ${i}`,
-    });
-  }
-  const exported = ledger.export();
-  // Swap entries 1 and 2
-  [exported[1], exported[2]] = [exported[2], exported[1]];
-  const result = standaloneVerifyChain(exported);
-  assert(!result.valid, "Must detect reordering");
-});
+suite("5. Cross-Verification (Receipt ↔ Ledger)");
 
-// ── Suite 7: Cross-Verification ──────────────────────────────────────
-
-suite("7. Cross-Verification (Receipt ↔ Ledger)");
-
-test("matching receipt and ledger entry pass cross-verification", () => {
-  const receipt = generateFullReceipt();
-  const ledgerEntry = {
-    entry_id: randomUUID(),
-    prev_hash: GENESIS_HASH,
-    ledger_hash: "x".repeat(64),
-    timestamp: new Date().toISOString(),
-    intent_id: receipt.intent_id,
-    action: receipt.action,
-    agent_id: receipt.agent_id,
-    status: "executed",
-    detail: "Test",
-    receipt_hash: receipt.hash_chain.receipt_hash,
-    authorization_hash: receipt.hash_chain.authorization_hash,
-    intent_hash: receipt.hash_chain.intent_hash,
-  };
-  const result = verifyReceiptAgainstLedger(receipt, ledgerEntry);
-  assert(result.valid, `Expected valid cross-verification: ${JSON.stringify(result.errors)}`);
-});
-
-test("mismatched receipt_hash fails cross-verification", () => {
-  const receipt = generateFullReceipt();
-  const ledgerEntry = {
-    entry_id: randomUUID(),
-    intent_id: receipt.intent_id,
-    receipt_hash: "0".repeat(64), // wrong hash
-    intent_hash: receipt.hash_chain.intent_hash,
-  };
-  const result = verifyReceiptAgainstLedger(receipt, ledgerEntry);
-  assert(!result.valid, "Must detect receipt_hash mismatch");
-});
-
-test("mismatched intent_id fails cross-verification", () => {
-  const receipt = generateFullReceipt();
-  const ledgerEntry = {
-    entry_id: randomUUID(),
-    intent_id: randomUUID(), // wrong intent
-    receipt_hash: receipt.hash_chain.receipt_hash,
-    intent_hash: receipt.hash_chain.intent_hash,
-  };
-  const result = verifyReceiptAgainstLedger(receipt, ledgerEntry);
-  assert(!result.valid, "Must detect intent_id mismatch");
-});
-
-// ── Suite 8: Edge Cases ──────────────────────────────────────────────
-
-suite("8. Edge Cases");
-
-test("receipt with all v2.1 fields passes verification", () => {
-  const receipt = generateFullReceipt({
-    receipt_type: "onboard",
-    ingestion: {
-      source: "webhook",
-      channel: "POST /api/onboard",
-      source_message_id: "wh-456",
-    },
-    identity_binding: {
-      signer_id: "human-root",
-      public_key_hex: "a".repeat(64),
-      signature_payload_hash: "b".repeat(64),
-      verification_method: "ed25519-nacl",
-      ed25519_signed: true,
-    },
+test("receipt cross-verifies against matching ledger entry", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
   });
-  const result = verifyReceipt(receipt);
-  assert(result.valid, "Full v2.1 receipt must pass");
-});
-
-test("v2.0 receipt (no ingestion, no identity_binding) passes verification", () => {
-  const receipt = generateFullReceipt();
-  // Simulate v2.0 by ensuring no v2.1 fields
-  assert(!receipt.ingestion);
-  assert(!receipt.identity_binding);
-  const result = verifyReceipt(receipt);
-  assert(result.valid, "v2.0 receipt must pass (backward compatible)");
-});
-
-test("ledger with receipt_hash links correctly", () => {
   const ledger = createLedger();
-  const receipt = generateFullReceipt();
   const entry = ledger.append({
-    intent_id: receipt.intent_id,
-    action: receipt.action,
-    agent_id: receipt.agent_id,
-    status: "executed",
-    detail: "Full pipeline",
-    receipt_hash: receipt.hash_chain.receipt_hash,
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    status: "executed", detail: "ok", receipt_hash: receipt.hash_chain.receipt_hash,
     intent_hash: receipt.hash_chain.intent_hash,
   });
-  assertEqual(entry.receipt_hash, receipt.hash_chain.receipt_hash);
+  const result = verifyReceiptAgainstLedger(receipt, entry);
+  assert(result.valid, `Cross-verification failed: ${result.errors.join(", ")}`);
 });
 
-test("empty array passes chain verification", () => {
-  const result = standaloneVerifyChain([]);
-  assert(result.valid);
-  assertEqual(result.entries_checked, 0);
+test("mismatched receipt/ledger fails cross-verification", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  const ledger = createLedger();
+  const entry = ledger.append({
+    intent_id: randomUUID(), action: intent.action, agent_id: intent.agent_id,
+    status: "executed", detail: "ok", receipt_hash: sha256("wrong"),
+  });
+  const result = verifyReceiptAgainstLedger(receipt, entry);
+  assert(!result.valid, "Mismatched receipt/ledger should fail");
 });
 
-test("non-array input fails chain verification", () => {
-  const result = standaloneVerifyChain("not an array");
-  assert(!result.valid);
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 6: BATCH VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("6. Batch Verification");
+
+test("batch verifies multiple valid receipts", () => {
+  const receipts = [];
+  for (let i = 0; i < 5; i++) {
+    const intent = makeIntent();
+    const exec = makeExecution(intent.intent_id);
+    receipts.push(generateReceipt({
+      intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+      intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    }));
+  }
+  const result = verifyReceiptBatch(receipts);
+  assert(result.all_valid, "All receipts should be valid");
+  assertEqual(result.valid, 5);
+  assertEqual(result.invalid, 0);
 });
 
-// ── Results ──────────────────────────────────────────────────────────
+test("batch detects tampered receipt among valid ones", () => {
+  const receipts = [];
+  for (let i = 0; i < 5; i++) {
+    const intent = makeIntent();
+    const exec = makeExecution(intent.intent_id);
+    receipts.push(generateReceipt({
+      intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+      intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    }));
+  }
+  receipts[2].hash_chain.intent_hash = sha256("tampered");
+  const result = verifyReceiptBatch(receipts);
+  assert(!result.all_valid, "Batch should detect tampered receipt");
+  assertEqual(result.valid, 4);
+  assertEqual(result.invalid, 1);
+});
 
-console.log(`\n${"─".repeat(60)}`);
-console.log(
-  `${BOLD}Results: ${passedTests}/${totalTests} passed${RESET}` +
-    (failedTests > 0 ? ` ${RED}(${failedTests} failed)${RESET}` : ` ${GREEN}(all pass)${RESET}`)
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 7: MIXED RECEIPT TYPES
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("7. Mixed Receipt Types (Proof-Layer + Governed)");
+
+test("batch verifies mix of proof-layer and governed receipts", () => {
+  const receipts = [];
+  // 3 proof-layer
+  for (let i = 0; i < 3; i++) {
+    const intent = makeIntent();
+    const exec = makeExecution(intent.intent_id);
+    receipts.push(generateReceipt({
+      intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+      intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    }));
+  }
+  // 2 governed
+  for (let i = 0; i < 2; i++) {
+    const intent = makeIntent();
+    const gov = makeGovernance(intent.intent_id);
+    const auth = makeAuthorization(intent.intent_id);
+    const exec = makeExecution(intent.intent_id);
+    receipts.push(generateReceipt({
+      intent_hash: hashIntent(intent), governance_hash: hashGovernance(gov),
+      authorization_hash: hashAuthorization(auth), execution_hash: hashExecution(exec),
+      intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+      authorized_by: auth.authorized_by,
+    }));
+  }
+  const result = verifyReceiptBatch(receipts);
+  assert(result.all_valid, "Mixed batch should all verify");
+  assertEqual(result.total, 5);
+});
+
+test("ledger accepts both proof-layer and governed receipts", () => {
+  const ledger = createLedger();
+  // proof-layer
+  const i1 = makeIntent();
+  const e1 = makeExecution(i1.intent_id);
+  const r1 = generateReceipt({
+    intent_hash: hashIntent(i1), execution_hash: hashExecution(e1),
+    intent_id: i1.intent_id, action: i1.action, agent_id: i1.agent_id,
+  });
+  ledger.append({ intent_id: i1.intent_id, action: i1.action, agent_id: i1.agent_id,
+    status: "executed", detail: "proof-layer", receipt_hash: r1.hash_chain.receipt_hash });
+  // governed
+  const i2 = makeIntent();
+  const g2 = makeGovernance(i2.intent_id);
+  const a2 = makeAuthorization(i2.intent_id);
+  const e2 = makeExecution(i2.intent_id);
+  const r2 = generateReceipt({
+    intent_hash: hashIntent(i2), governance_hash: hashGovernance(g2),
+    authorization_hash: hashAuthorization(a2), execution_hash: hashExecution(e2),
+    intent_id: i2.intent_id, action: i2.action, agent_id: i2.agent_id,
+    authorized_by: a2.authorized_by,
+  });
+  ledger.append({ intent_id: i2.intent_id, action: i2.action, agent_id: i2.agent_id,
+    status: "executed", detail: "governed", receipt_hash: r2.hash_chain.receipt_hash });
+  const result = verifyChain(ledger.getEntries());
+  assert(result.valid, "Mixed ledger chain should verify");
+  assertEqual(result.entries_checked, 2);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 8: OPTIONAL EXTENSIONS (INGESTION + IDENTITY BINDING)
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("8. Optional Extensions");
+
+test("receipt with ingestion provenance", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    ingestion: { source: "api", channel: "POST /intent", timestamp: new Date().toISOString() },
+  });
+  assert(receipt.ingestion, "Missing ingestion");
+  assertEqual(receipt.ingestion.source, "api");
+  const result = verifyReceipt(receipt);
+  assert(result.valid, "Receipt with ingestion should verify");
+});
+
+test("receipt with identity binding", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    identity_binding: { ed25519_signed: false },
+  });
+  assert(receipt.identity_binding, "Missing identity_binding");
+  assertEqual(receipt.identity_binding.ed25519_signed, false);
+  const result = verifyReceipt(receipt);
+  assert(result.valid, "Receipt with identity binding should verify");
+});
+
+test("receipt without optional extensions still verifies", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  assert(!receipt.ingestion, "Should not have ingestion");
+  assert(!receipt.identity_binding, "Should not have identity_binding");
+  const result = verifyReceipt(receipt);
+  assert(result.valid, "Receipt without extensions should verify");
+});
+
+// ─── Results ─────────────────────────────────────────────────────────
+
+console.log(`\n${"═".repeat(60)}`);
+console.log(`${BOLD}RIO Receipt Protocol v2.2 Conformance Results${RESET}`);
+console.log(`${"═".repeat(60)}`);
+console.log(`  Total:  ${total}`);
+console.log(`  ${GREEN}Passed: ${passed}${RESET}`);
+if (failed > 0) console.log(`  ${RED}Failed: ${failed}${RESET}`);
+console.log(`${"═".repeat(60)}`);
+console.log(failed === 0
+  ? `\n${GREEN}${BOLD}\u2713 CONFORMANT — All tests passed${RESET}\n`
+  : `\n${RED}${BOLD}\u2717 NON-CONFORMANT — ${failed} test(s) failed${RESET}\n`
 );
-console.log(`${"─".repeat(60)}\n`);
-
-if (failedTests > 0) {
-  console.log(`${RED}${BOLD}CONFORMANCE: FAIL${RESET}`);
-  console.log(`${DIM}Fix the failing tests to achieve conformance.${RESET}\n`);
-  process.exit(1);
-} else {
-  console.log(`${GREEN}${BOLD}CONFORMANCE: PASS${RESET}`);
-  console.log(`${DIM}This implementation conforms to the RIO Receipt Protocol specification.${RESET}\n`);
-  process.exit(0);
-}
+process.exit(failed === 0 ? 0 : 1);

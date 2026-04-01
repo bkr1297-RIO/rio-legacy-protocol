@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rioprotocol.org/schema/receipt/v2.1",
+  "$id": "https://rioprotocol.org/schema/receipt/v2.2",
   "title": "RIO Receipt",
-  "description": "A cryptographic receipt proving that an AI-initiated action was authorized, executed, and recorded. Any system implementing the RIO Receipt Protocol MUST produce receipts conforming to this schema.",
-  "version": "2.1.0",
+  "description": "A cryptographic record of an AI action, written to a tamper-evident ledger. The core receipt proves what happened, when, and which system initiated it. Governance and authorization fields are optional extensions for systems that implement human approval workflows.",
+  "version": "2.2.0",
   "type": "object",
   "required": [
     "receipt_id",
@@ -11,7 +11,6 @@
     "intent_id",
     "action",
     "agent_id",
-    "authorized_by",
     "timestamp",
     "hash_chain",
     "verification"
@@ -24,8 +23,8 @@
     },
     "receipt_type": {
       "type": "string",
-      "enum": ["governed_action", "kill_switch", "onboard", "system"],
-      "description": "Classification of the receipt. 'governed_action' is the default for standard pipeline actions."
+      "enum": ["action", "governed_action", "kill_switch", "onboard", "system"],
+      "description": "Receipt classification. 'action' is the base proof-layer type (no governance required). 'governed_action' indicates governance and authorization were applied. Other types are reserved for system events."
     },
     "intent_id": {
       "type": "string",
@@ -34,15 +33,16 @@
     },
     "action": {
       "type": "string",
-      "description": "The action type that was executed (e.g., 'send_email', 'create_pr', 'transfer_funds')."
+      "description": "The action type that was performed (e.g., 'send_email', 'create_pr', 'transfer_funds')."
     },
     "agent_id": {
       "type": "string",
-      "description": "Identifier of the AI agent or system that requested the action."
+      "description": "Identifier of the AI agent or system that initiated the action."
     },
     "authorized_by": {
-      "type": "string",
-      "description": "Identifier of the human or policy that authorized execution. For AUTO_APPROVE actions, this is the policy identifier."
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Optional. Who or what authorized the action (e.g., 'HUMAN:jane@example.com', 'POLICY:auto_approve_low_risk'). Null when no authorization step was involved."
     },
     "timestamp": {
       "type": "string",
@@ -51,11 +51,9 @@
     },
     "hash_chain": {
       "type": "object",
-      "description": "The cryptographic hash chain binding intent, governance, authorization, execution, and receipt together.",
+      "description": "Cryptographic hash chain binding the receipt to its source data. Core fields (intent_hash, execution_hash, receipt_hash) are always required. Governance and authorization hashes are present only when those stages were performed.",
       "required": [
         "intent_hash",
-        "governance_hash",
-        "authorization_hash",
         "execution_hash",
         "receipt_hash"
       ],
@@ -66,14 +64,16 @@
           "description": "SHA-256 hash of the canonical intent object."
         },
         "governance_hash": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[a-f0-9]{64}$",
-          "description": "SHA-256 hash of the governance decision."
+          "default": null,
+          "description": "Optional. SHA-256 hash of the governance decision. Present only when governance was applied."
         },
         "authorization_hash": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[a-f0-9]{64}$",
-          "description": "SHA-256 hash of the authorization record."
+          "default": null,
+          "description": "Optional. SHA-256 hash of the authorization record. Present only when human or policy approval was required."
         },
         "execution_hash": {
           "type": "string",
@@ -83,7 +83,7 @@
         "receipt_hash": {
           "type": "string",
           "pattern": "^[a-f0-9]{64}$",
-          "description": "SHA-256 hash of the receipt itself, computed from receipt_id + all preceding hashes + timestamp."
+          "description": "SHA-256 hash of the receipt itself, computed from receipt_id + all present stage hashes (in chain_order) + timestamp."
         }
       },
       "additionalProperties": false
@@ -100,31 +100,25 @@
         },
         "chain_length": {
           "type": "integer",
-          "const": 5,
-          "description": "Number of hashes in the chain. MUST be 5."
+          "minimum": 3,
+          "maximum": 5,
+          "description": "Number of hashes in the chain. 3 for proof-layer receipts (intent, execution, receipt). 5 for governed receipts (adds governance, authorization)."
         },
         "chain_order": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Ordered list of hash field names in the chain.",
-          "const": [
-            "intent_hash",
-            "governance_hash",
-            "authorization_hash",
-            "execution_hash",
-            "receipt_hash"
-          ]
+          "description": "Ordered list of hash field names used to compute receipt_hash. For proof-layer: ['intent_hash', 'execution_hash', 'receipt_hash']. For governed: ['intent_hash', 'governance_hash', 'authorization_hash', 'execution_hash', 'receipt_hash']."
         }
       },
       "additionalProperties": false
     },
     "ingestion": {
       "type": "object",
-      "description": "Provenance metadata recording how the original intent entered the system. Optional in v2.1.",
+      "description": "Optional. Provenance metadata recording how the original intent entered the system.",
       "properties": {
         "source": {
           "type": "string",
-          "enum": ["api", "email", "sms", "webhook", "frontend", "service_bus", "onboard", "kill_switch", "internal"],
+          "enum": ["api", "email", "sms", "webhook", "frontend", "service_bus", "cli", "sdk"],
           "description": "The channel through which the intent was received."
         },
         "channel": {
@@ -146,7 +140,7 @@
     },
     "identity_binding": {
       "type": "object",
-      "description": "Ed25519 cryptographic proof binding the receipt to a specific signer identity. Optional in v2.1.",
+      "description": "Optional. Cryptographic proof binding the receipt to a specific signer identity.",
       "properties": {
         "signer_id": {
           "type": ["string", "null"],

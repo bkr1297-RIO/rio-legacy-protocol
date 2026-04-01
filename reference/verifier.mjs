@@ -3,14 +3,13 @@
  * Standalone Verifier
  *
  * Verifies receipts and ledger chains independently of the system
- * that produced them. This is the core of the "trust but verify" model:
- * any third party can take a receipt or a ledger export and confirm
- * its integrity without access to the original system.
+ * that produced them. Supports both proof-layer receipts (3-hash)
+ * and governed receipts (5-hash).
  *
  * Zero external dependencies beyond Node.js built-ins.
  *
  * @module rio-receipt-protocol/verifier
- * @version 1.0.0
+ * @version 2.0.0
  * @license MIT OR Apache-2.0
  */
 
@@ -19,11 +18,6 @@ import { createHash } from "node:crypto";
 const GENESIS_HASH =
   "0000000000000000000000000000000000000000000000000000000000000000";
 
-/**
- * Compute SHA-256 hash of a string.
- * @param {string} data
- * @returns {string} Lowercase hex-encoded SHA-256 hash
- */
 function sha256(data) {
   return createHash("sha256").update(data).digest("hex");
 }
@@ -33,9 +27,9 @@ function sha256(data) {
 /**
  * Verify a single RIO Receipt.
  *
- * Recomputes the receipt_hash from the receipt's components and compares
- * it to the stored hash. This confirms the receipt has not been tampered
- * with since it was generated.
+ * Supports both proof-layer receipts (chain_length 3: intent, execution, receipt)
+ * and governed receipts (chain_length 5: intent, governance, authorization, execution, receipt).
+ * Uses the receipt's own chain_order to determine verification.
  *
  * @param {object} receipt - A RIO Receipt object
  * @returns {object} Verification result
@@ -43,25 +37,28 @@ function sha256(data) {
 export function verifyReceipt(receipt) {
   const errors = [];
 
-  // 1. Structural validation
+  // 1. Structural validation — core fields always required
   if (!receipt.receipt_id) errors.push("Missing receipt_id");
   if (!receipt.timestamp) errors.push("Missing timestamp");
   if (!receipt.hash_chain) errors.push("Missing hash_chain");
+
   if (receipt.hash_chain) {
-    const required = [
-      "intent_hash",
-      "governance_hash",
-      "authorization_hash",
-      "execution_hash",
-      "receipt_hash",
-    ];
-    for (const field of required) {
+    // Core fields always required
+    const coreRequired = ["intent_hash", "execution_hash", "receipt_hash"];
+    for (const field of coreRequired) {
       if (!receipt.hash_chain[field]) {
         errors.push(`Missing hash_chain.${field}`);
       } else if (!/^[a-f0-9]{64}$/.test(receipt.hash_chain[field])) {
-        errors.push(
-          `Invalid hash format for hash_chain.${field}: expected 64 hex chars`
-        );
+        errors.push(`Invalid hash format for hash_chain.${field}: expected 64 hex chars`);
+      }
+    }
+
+    // Governance/authorization hashes: validate format if present, but not required
+    const optionalFields = ["governance_hash", "authorization_hash"];
+    for (const field of optionalFields) {
+      const val = receipt.hash_chain[field];
+      if (val && val !== null && !/^[a-f0-9]{64}$/.test(val)) {
+        errors.push(`Invalid hash format for hash_chain.${field}: expected 64 hex chars`);
       }
     }
   }
@@ -74,45 +71,47 @@ export function verifyReceipt(receipt) {
     };
   }
 
-  // 2. Recompute receipt hash
-  const receiptContent = JSON.stringify({
-    receipt_id: receipt.receipt_id,
-    intent_hash: receipt.hash_chain.intent_hash,
-    governance_hash: receipt.hash_chain.governance_hash,
-    authorization_hash: receipt.hash_chain.authorization_hash,
-    execution_hash: receipt.hash_chain.execution_hash,
-    timestamp: receipt.timestamp,
-  });
-  const computedHash = sha256(receiptContent);
+  // 2. Determine chain_order from the receipt itself
+  const chainOrder = receipt.verification?.chain_order || [
+    "intent_hash",
+    "execution_hash",
+    "receipt_hash",
+  ];
+
+  // 3. Recompute receipt hash using the receipt's chain_order
+  const receiptContent = { receipt_id: receipt.receipt_id };
+  for (const field of chainOrder) {
+    if (field !== "receipt_hash") {
+      receiptContent[field] = receipt.hash_chain[field];
+    }
+  }
+  receiptContent.timestamp = receipt.timestamp;
+  const computedHash = sha256(JSON.stringify(receiptContent));
   const storedHash = receipt.hash_chain.receipt_hash;
 
-  // 3. Check verification metadata
+  // 4. Check verification metadata
   if (receipt.verification) {
     if (receipt.verification.algorithm !== "SHA-256") {
-      errors.push(
-        `Unexpected algorithm: ${receipt.verification.algorithm} (expected SHA-256)`
-      );
+      errors.push(`Unexpected algorithm: ${receipt.verification.algorithm} (expected SHA-256)`);
     }
-    if (receipt.verification.chain_length !== 5) {
-      errors.push(
-        `Unexpected chain_length: ${receipt.verification.chain_length} (expected 5)`
-      );
+    const expectedLength = chainOrder.length;
+    if (receipt.verification.chain_length !== expectedLength) {
+      errors.push(`chain_length ${receipt.verification.chain_length} does not match chain_order length ${expectedLength}`);
     }
   }
 
   const hashValid = computedHash === storedHash;
   if (!hashValid) {
-    errors.push(
-      `Receipt hash mismatch: computed ${computedHash}, stored ${storedHash}`
-    );
+    errors.push(`Receipt hash mismatch: computed ${computedHash}, stored ${storedHash}`);
   }
 
   return {
     valid: hashValid && errors.length === 0,
     receipt_id: receipt.receipt_id,
-    receipt_type: receipt.receipt_type || "governed_action",
+    receipt_type: receipt.receipt_type || "action",
     computed_hash: computedHash,
     stored_hash: storedHash,
+    chain_length: chainOrder.length,
     errors,
   };
 }
@@ -121,11 +120,6 @@ export function verifyReceipt(receipt) {
 
 /**
  * Verify a ledger hash chain.
- *
- * Takes an array of ledger entries (in order) and verifies:
- * 1. The first entry's prev_hash is the genesis hash
- * 2. Each entry's prev_hash matches the previous entry's ledger_hash
- * 3. Each entry's ledger_hash is correctly computed from its canonical content
  *
  * @param {Array} entries - Ordered array of ledger entries
  * @returns {object} Chain verification result
@@ -149,7 +143,6 @@ export function verifyChain(entries) {
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
 
-    // Check prev_hash linkage
     if (e.prev_hash !== prev) {
       return {
         valid: false,
@@ -159,7 +152,6 @@ export function verifyChain(entries) {
       };
     }
 
-    // Recompute the hash using canonical field order
     const canonical = JSON.stringify({
       entry_id: e.entry_id,
       prev_hash: e.prev_hash,
@@ -195,13 +187,10 @@ export function verifyChain(entries) {
   };
 }
 
-// ─── Full Verification (Receipt + Ledger Entry Match) ────────────────
+// ─── Cross-Verification ─────────────────────────────────────────────
 
 /**
  * Verify that a receipt matches its corresponding ledger entry.
- *
- * Checks that the receipt_hash stored in the ledger entry matches
- * the receipt_hash in the receipt's hash_chain.
  *
  * @param {object} receipt - A RIO Receipt
  * @param {object} ledgerEntry - The ledger entry that recorded this receipt
@@ -211,21 +200,18 @@ export function verifyReceiptAgainstLedger(receipt, ledgerEntry) {
   const receiptResult = verifyReceipt(receipt);
   const errors = [...receiptResult.errors];
 
-  // Check that the ledger entry references this receipt
   if (ledgerEntry.receipt_hash !== receipt.hash_chain.receipt_hash) {
     errors.push(
       `Ledger entry receipt_hash (${ledgerEntry.receipt_hash}) does not match receipt hash_chain.receipt_hash (${receipt.hash_chain.receipt_hash})`
     );
   }
 
-  // Check intent_id consistency
   if (ledgerEntry.intent_id !== receipt.intent_id) {
     errors.push(
       `Intent ID mismatch: ledger says ${ledgerEntry.intent_id}, receipt says ${receipt.intent_id}`
     );
   }
 
-  // Check intent_hash consistency (if present in ledger entry)
   if (
     ledgerEntry.intent_hash &&
     ledgerEntry.intent_hash !== receipt.hash_chain.intent_hash
