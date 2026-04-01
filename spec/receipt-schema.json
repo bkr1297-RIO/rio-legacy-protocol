@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rioprotocol.org/schema/receipt/v2.1",
+  "title": "RIO Receipt",
+  "description": "A cryptographic receipt proving that an AI-initiated action was authorized, executed, and recorded. Any system implementing the RIO Receipt Protocol MUST produce receipts conforming to this schema.",
+  "version": "2.1.0",
+  "type": "object",
+  "required": [
+    "receipt_id",
+    "receipt_type",
+    "intent_id",
+    "action",
+    "agent_id",
+    "authorized_by",
+    "timestamp",
+    "hash_chain",
+    "verification"
+  ],
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this receipt. MUST be a v4 UUID."
+    },
+    "receipt_type": {
+      "type": "string",
+      "enum": ["governed_action", "kill_switch", "onboard", "system"],
+      "description": "Classification of the receipt. 'governed_action' is the default for standard pipeline actions."
+    },
+    "intent_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The intent this receipt covers. Links the receipt to the original action request."
+    },
+    "action": {
+      "type": "string",
+      "description": "The action type that was executed (e.g., 'send_email', 'create_pr', 'transfer_funds')."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier of the AI agent or system that requested the action."
+    },
+    "authorized_by": {
+      "type": "string",
+      "description": "Identifier of the human or policy that authorized execution. For AUTO_APPROVE actions, this is the policy identifier."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of when the receipt was generated."
+    },
+    "hash_chain": {
+      "type": "object",
+      "description": "The cryptographic hash chain binding intent, governance, authorization, execution, and receipt together.",
+      "required": [
+        "intent_hash",
+        "governance_hash",
+        "authorization_hash",
+        "execution_hash",
+        "receipt_hash"
+      ],
+      "properties": {
+        "intent_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the canonical intent object."
+        },
+        "governance_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the governance decision."
+        },
+        "authorization_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the authorization record."
+        },
+        "execution_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the execution result."
+        },
+        "receipt_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the receipt itself, computed from receipt_id + all preceding hashes + timestamp."
+        }
+      },
+      "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "description": "Metadata describing how to verify this receipt.",
+      "required": ["algorithm", "chain_length", "chain_order"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "SHA-256",
+          "description": "The hash algorithm used. MUST be SHA-256."
+        },
+        "chain_length": {
+          "type": "integer",
+          "const": 5,
+          "description": "Number of hashes in the chain. MUST be 5."
+        },
+        "chain_order": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered list of hash field names in the chain.",
+          "const": [
+            "intent_hash",
+            "governance_hash",
+            "authorization_hash",
+            "execution_hash",
+            "receipt_hash"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ingestion": {
+      "type": "object",
+      "description": "Provenance metadata recording how the original intent entered the system. Optional in v2.1.",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["api", "email", "sms", "webhook", "frontend", "service_bus", "onboard", "kill_switch", "internal"],
+          "description": "The channel through which the intent was received."
+        },
+        "channel": {
+          "type": "string",
+          "description": "Specific endpoint or integration path."
+        },
+        "source_message_id": {
+          "type": ["string", "null"],
+          "description": "Original message ID from the source system."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp of when the intent was received."
+        }
+      },
+      "required": ["source", "channel", "timestamp"],
+      "additionalProperties": false
+    },
+    "identity_binding": {
+      "type": "object",
+      "description": "Ed25519 cryptographic proof binding the receipt to a specific signer identity. Optional in v2.1.",
+      "properties": {
+        "signer_id": {
+          "type": ["string", "null"],
+          "description": "Identifier of the signing authority."
+        },
+        "public_key_hex": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Hex-encoded Ed25519 public key of the signer."
+        },
+        "signature_payload_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the payload that was signed."
+        },
+        "verification_method": {
+          "type": ["string", "null"],
+          "description": "Method used for verification (e.g., 'ed25519-nacl')."
+        },
+        "ed25519_signed": {
+          "type": "boolean",
+          "description": "Whether this receipt was signed with Ed25519."
+        }
+      },
+      "required": ["ed25519_signed"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@rio-protocol/receipt",
+  "version": "2.1.0",
+  "description": "RIO Receipt Protocol — Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails.",
+  "type": "module",
+  "main": "reference/receipts.mjs",
+  "exports": {
+    ".": "./reference/receipts.mjs",
+    "./receipts": "./reference/receipts.mjs",
+    "./ledger": "./reference/ledger.mjs",
+    "./verifier": "./reference/verifier.mjs"
+  },
+  "bin": {
+    "rio-verify": "./cli/verify.mjs"
+  },
+  "scripts": {
+    "test": "node tests/conformance.test.mjs",
+    "verify": "node cli/verify.mjs"
+  },
+  "keywords": [
+    "ai-governance",
+    "cryptographic-receipts",
+    "tamper-evident-ledger",
+    "hash-chain",
+    "ai-audit",
+    "human-in-the-loop",
+    "sha256",
+    "ed25519",
+    "ai-safety",
+    "compliance"
+  ],
+  "author": "RIO Protocol Contributors",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bkr1297-RIO/rio-receipt-protocol"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "reference/",
+    "cli/",
+    "spec/",
+    "tests/",
+    "examples/",
+    "README.md",
+    "LICENSE"
+  ]
+}
