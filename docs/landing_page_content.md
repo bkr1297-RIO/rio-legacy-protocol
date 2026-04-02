@@ -1,61 +1,78 @@
 ## What is a RIO Receipt?
 
-A RIO Receipt is a cryptographically signed, tamper-evident record of every AI action and human approval. It provides a universal proof layer for AI decision-making, ensuring auditable and compliant operations in high-stakes environments.
+A RIO Receipt is a tamper-evident, hash-chained record of every AI action. It provides a universal proof layer for AI decision-making, ensuring auditable and compliant operations in high-stakes environments.
 
-### Annotated RIO Receipt JSON
+### Annotated RIO Receipt JSON (v2.2)
 
 ```json
 {
-  "id": "receipt-12345",
-  "timestamp": "2026-04-01T10:30:00Z",
-  "action": {
-    "type": "send_email",
-    "details": {
-      "to": "auditor@example.com",
-      "subject": "Compliance Report Q1 2026",
-      "body_hash": "sha256-abcdef1234567890..."
-    }
+  "receipt_id": "82b99ccc-593f-4c27-a090-5d6e8deb72f1",
+  "timestamp": "2026-04-01T16:00:01.000Z",
+  "version": "2.2",
+  "type": "governed_action",
+  "action": "send_email",
+  "agent_id": "copilot-agent-001",
+  "authorized_by": "HUMAN:cfo@example.com",
+  "hash_chain": {
+    "intent_hash": "a3f7c8...",
+    "execution_hash": "9b2d1e...",
+    "governance_hash": "4e8f2a...",
+    "authorization_hash": "d1c7b3...",
+    "receipt_hash": "7f4a9c...",
+    "chain_order": [
+      "intent_hash",
+      "execution_hash",
+      "governance_hash",
+      "authorization_hash",
+      "receipt_hash"
+    ]
   },
-  "ai_proposal": {
-    "model": "GPT-4.1-Mini",
-    "confidence": 0.98,
-    "reasoning_hash": "sha256-fedcba0987654321..."
-  },
-  "human_approval": {
-    "approved_by": "Brian",
-    "timestamp": "2026-04-01T10:31:15Z",
-    "role": "Compliance Officer",
-    "approval_mechanism": "RIO Mobile App"
-  },
-  "cryptographic_proof": {
-    "receipt_hash": "sha256-1a2b3c4d5e6f7a8b...",
-    "previous_ledger_hash": "sha256-9z8y7x6w5v4u3t2s...",
-    "signature": "Ed25519-signature-string-here...",
-    "public_key_id": "rio-key-id-123"
+  "verification": {
+    "algorithm": "SHA-256",
+    "method": "ordered_concatenation"
   }
 }
 ```
 
 **Explanation of Fields:**
 
-*   **`id`**: A unique identifier for this specific RIO Receipt.
-*   **`timestamp`**: The UTC timestamp when the action was recorded.
-*   **`action`**: Details the real-world action taken, including its type and specific parameters. A `body_hash` ensures the content of the action is also verifiable.
-*   **`ai_proposal`**: Captures the AI system's recommendation, including the model used, its confidence level, and a hash of its reasoning process.
-*   **`human_approval`**: Records the human-in-the-loop (HITL) decision, including who approved it, when, their role, and the mechanism used for approval.
-*   **`cryptographic_proof`**: Contains the core elements for auditability:
-    *   `receipt_hash`: A SHA-256 hash of the entire receipt content, ensuring its integrity.
-    *   `previous_ledger_hash`: Links this receipt to the preceding entry in the tamper-evident ledger, forming an unbroken chain.
-    *   `signature`: An Ed25519 digital signature, proving the receipt's authenticity and origin.
-    *   `public_key_id`: Identifies the public key used to verify the signature.
+*   **`receipt_id`**: A UUID uniquely identifying this receipt.
+*   **`timestamp`**: The UTC timestamp when the receipt was generated.
+*   **`version`**: Protocol version (currently `2.2`).
+*   **`type`**: Either `action` (proof-layer, 3-hash) or `governed_action` (full governance, 5-hash).
+*   **`action`**: The real-world action that was taken (e.g., `send_email`, `transfer_funds`).
+*   **`agent_id`**: The AI agent that performed the action.
+*   **`authorized_by`**: (Governed receipts only) Who approved the action.
+*   **`hash_chain`**: The core proof structure:
+    *   `intent_hash`: SHA-256 of the original request (what was asked for).
+    *   `execution_hash`: SHA-256 of the execution result (what actually happened).
+    *   `governance_hash`: (Governed only) SHA-256 of the policy evaluation.
+    *   `authorization_hash`: (Governed only) SHA-256 of the human approval decision.
+    *   `receipt_hash`: SHA-256 of all preceding hashes concatenated in `chain_order` — the tamper-evident seal.
+    *   `chain_order`: The exact sequence used to compute `receipt_hash`, making verification deterministic.
+*   **`verification`**: Algorithm and method used, enabling any third party to independently verify.
+
+### Two Receipt Types
+
+**Proof-Layer Receipt (3-hash chain):** For any AI action. Binds intent to execution with a receipt hash. No governance required.
+
+```
+intent_hash → execution_hash → receipt_hash
+```
+
+**Governed Receipt (5-hash chain):** For high-risk actions requiring human approval. Adds governance evaluation and authorization to the chain.
+
+```
+intent_hash → execution_hash → governance_hash → authorization_hash → receipt_hash
+```
 
 ### Five Proof-Point Cards
 
-1.  **Tamper-Evident Ledger**: Every RIO Receipt is immutably linked in a SHA-256 hash chain, creating a verifiable, unalterable record of all AI actions and human approvals.
-2.  **Language-Agnostic Standard**: The RIO Receipt Protocol is designed as a portable standard, with reference implementations in multiple languages (e.g., Node.js, Python) using only standard libraries, proving its universal applicability.
-3.  **Human-in-the-Loop (HITL) Assurance**: Clearly documents human oversight and approval for AI-driven decisions, providing a transparent audit trail for critical actions.
-4.  **Audit-Ready Compliance**: Generates cryptographic audit trails that satisfy high-compliance requirements for regulators, auditors, and internal governance, simplifying proof of adherence.
-5.  **Universal Proof Layer**: Integrates seamlessly as a foundational layer to existing AI and automated systems, providing an external, verifiable record of actions without disrupting core application logic.
+1.  **Tamper-Evident Ledger**: Every RIO Receipt is hash-chained into a ledger where each entry links to the previous via SHA-256. Any modification to any entry breaks the chain and is immediately detectable.
+2.  **Language-Agnostic Standard**: Reference implementations in Node.js and Python with zero external dependencies. Install via `npm` or `pip` and start issuing receipts in minutes.
+3.  **Human-in-the-Loop Assurance**: Governed receipts (5-hash chain) cryptographically bind human approval decisions into the proof chain, creating an unbreakable audit trail from intent through authorization to execution.
+4.  **Audit-Ready Compliance**: Generates cryptographic audit trails that satisfy SOC 2, ISO 27001, GDPR Article 22, and EU AI Act requirements. Any auditor can independently verify receipts without access to the original system.
+5.  **Universal Proof Layer**: Works with any AI provider (OpenAI, Anthropic, open-source), any framework (LangChain, custom), and any orchestration system. The proof layer is independent of the application layer.
 
 ## What this project is (and isn't)
 

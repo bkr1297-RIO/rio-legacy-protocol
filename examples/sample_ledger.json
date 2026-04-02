@@ -1,20 +1,38 @@
 [
-    {
-        "id": "genesis-001",
-        "timestamp": "2026-04-01T15:59:00Z",
-        "hash": "genesis_hash_placeholder",
-        "previous_hash": "0"
-    },
-    {
-        "id": "receipt-123",
-        "timestamp": "2026-04-01T16:00:00Z",
-        "hash": "valid_receipt_hash_placeholder",
-        "previous_hash": "genesis_hash_placeholder"
-    },
-    {
-        "id": "receipt-456",
-        "timestamp": "2026-04-01T16:05:00Z",
-        "hash": "invalid_receipt_hash_placeholder",
-        "previous_hash": "valid_receipt_hash_placeholder"
-    }
+  {
+    "entry_id": "a84f2429-51ee-4e91-abe6-0461d175d1da",
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "ledger_hash": "01edb17724e3b956e8aebfcd6424859eac627be1085580c6ecb5ff18403f9cdd",
+    "timestamp": "2026-04-02T01:24:33.807Z",
+    "action": "send_email",
+    "status": "executed",
+    "detail": "Email sent to user@example.com",
+    "receipt_hash": null,
+    "authorization_hash": null,
+    "intent_hash": null
+  },
+  {
+    "entry_id": "c476abc9-9e09-4f2b-91cf-c90e8548e5ac",
+    "prev_hash": "01edb17724e3b956e8aebfcd6424859eac627be1085580c6ecb5ff18403f9cdd",
+    "ledger_hash": "5f9f118b5bbaa1a33b42f8cdc3db1cbd80b3d1061877d7b7060f0d4f70a76b4c",
+    "timestamp": "2026-04-02T01:24:33.807Z",
+    "action": "transfer_funds",
+    "status": "executed",
+    "detail": "Funds transfer $5,000 to ACCT-9876 (governed, human-approved)",
+    "receipt_hash": null,
+    "authorization_hash": null,
+    "intent_hash": null
+  },
+  {
+    "entry_id": "784b8489-3072-4033-b2cf-06d2cf5665b6",
+    "prev_hash": "5f9f118b5bbaa1a33b42f8cdc3db1cbd80b3d1061877d7b7060f0d4f70a76b4c",
+    "ledger_hash": "c88b8454dfc5f25167e39cdea6e4f6512e1872fc81a0b96f1d58ca4b2c2589d3",
+    "timestamp": "2026-04-02T01:24:33.807Z",
+    "action": "schedule_meeting",
+    "status": "executed",
+    "detail": "Meeting 'Q2 Review' scheduled for 2026-04-03",
+    "receipt_hash": null,
+    "authorization_hash": null,
+    "intent_hash": null
+  }
 ]

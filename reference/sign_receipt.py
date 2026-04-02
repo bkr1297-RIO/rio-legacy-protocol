@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """
-sign_receipt.py — RIO Receipt Protocol
+sign_receipt.py — RIO Receipt Protocol (LEGACY)
+
+══════════════════════════════════════════════════════════════════════
+LEGACY — This file uses the pre-v2.2 receipt schema. It is preserved
+for backward compatibility with Damon's Ed25519 signing work.
+
+For the current v2.2 implementation, use:
+  pip install rio-receipt-protocol
+  from rio_receipt_protocol import generate_receipt
+
+Or see: python/rio_receipt_protocol/receipts.py
+══════════════════════════════════════════════════════════════════════
+
+Original description:
 Canonicalize and sign a receipt JSON using ECDSA secp256k1.
 
 Usage:

@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """
-verify_receipt.py — RIO Receipt Protocol
+verify_receipt.py — RIO Receipt Protocol (LEGACY)
+
+══════════════════════════════════════════════════════════════════════
+LEGACY — This file uses the pre-v2.2 receipt schema. It is preserved
+for backward compatibility with Damon's Ed25519 signing work.
+
+For the current v2.2 implementation, use:
+  pip install rio-receipt-protocol
+  from rio_receipt_protocol import verify_receipt
+
+Or see: python/rio_receipt_protocol/verifier.py
+══════════════════════════════════════════════════════════════════════
+
+Original description:
 Verify a signed receipt JSON: required fields, ledger_hash integrity, and ECDSA signature.
 
 Usage:

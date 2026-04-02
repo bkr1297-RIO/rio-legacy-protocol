@@ -1,4 +1,16 @@
 import json
+# ══════════════════════════════════════════════════════════════════════
+# LEGACY — This file uses the pre-v2.2 receipt schema (id, action.type,
+# signature, public_key). It is preserved for backward compatibility
+# with Damon's Ed25519 signing work.
+#
+# For the current v2.2 implementation, use:
+#   pip install rio-receipt-protocol
+#   from rio_receipt_protocol import verify_receipt
+#
+# Or see: python/rio_receipt_protocol/verifier.py
+# ══════════════════════════════════════════════════════════════════════
+
 import hashlib
 from nacl.signing import VerifyKey
 from nacl.exceptions import BadSignatureError
