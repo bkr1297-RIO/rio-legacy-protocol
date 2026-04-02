@@ -1,0 +1,27 @@
+{
+  "receipt_id": "301b6516-bc32-4936-b882-69b145544977",
+  "receipt_type": "governed_action",
+  "intent_id": "e3a19336-dd82-496f-812b-e6f1636e96f2",
+  "action": "send_email",
+  "agent_id": "copilot-agent-001",
+  "authorized_by": "HUMAN:cfo@example.com",
+  "timestamp": "2026-04-02T00:58:23.955Z",
+  "hash_chain": {
+    "intent_hash": "94a5adb909be3f1fcf3259ee8a84a8df08a6c31b5379da9320d630fe94fc1d79",
+    "governance_hash": "c97b46d2251ae55081a3abeea35dfa303e2afdd023c79213bda4e9965a9bda3a",
+    "authorization_hash": "21b62d916c3340d638997ab49cf9dc6d7e6a839889540a75232b31c41af6abb3",
+    "execution_hash": "928bd98b1e0f6896bf8b940a773924fc2e0768b321ecebe87ecc5654b7765cce",
+    "receipt_hash": "9c1e2447a745d408ab28d7cc7e56955bbaa2a026790a93b0b81aeaac50c0e120"
+  },
+  "verification": {
+    "algorithm": "SHA-256",
+    "chain_length": 5,
+    "chain_order": [
+      "intent_hash",
+      "governance_hash",
+      "authorization_hash",
+      "execution_hash",
+      "receipt_hash"
+    ]
+  }
+}

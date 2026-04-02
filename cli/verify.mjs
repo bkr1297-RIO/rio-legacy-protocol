@@ -59,8 +59,9 @@ function verifyReceipt(receipt) {
 
   if (!receipt.hash_chain) return { valid: false, errors };
 
-  const fields = ["intent_hash", "governance_hash", "authorization_hash", "execution_hash", "receipt_hash"];
-  for (const f of fields) {
+  // Core fields always required
+  const coreFields = ["intent_hash", "execution_hash", "receipt_hash"];
+  for (const f of coreFields) {
     if (!receipt.hash_chain[f]) {
       errors.push(`Missing hash_chain.${f}`);
       valid = false;
@@ -70,17 +71,35 @@ function verifyReceipt(receipt) {
     }
   }
 
+  // Governance/authorization: validate format if present, but not required
+  for (const f of ["governance_hash", "authorization_hash"]) {
+    const val = receipt.hash_chain[f];
+    if (val && !/^[a-f0-9]{64}$/.test(val)) {
+      errors.push(`Invalid hash format: hash_chain.${f}`);
+      valid = false;
+    }
+  }
+
   if (!valid) return { valid, errors };
 
-  // Recompute receipt hash
-  const content = JSON.stringify({
-    receipt_id: receipt.receipt_id,
-    intent_hash: receipt.hash_chain.intent_hash,
-    governance_hash: receipt.hash_chain.governance_hash,
-    authorization_hash: receipt.hash_chain.authorization_hash,
-    execution_hash: receipt.hash_chain.execution_hash,
-    timestamp: receipt.timestamp,
-  });
+  // Use chain_order from receipt, or infer from present fields
+  const chainOrder = receipt.verification?.chain_order || (() => {
+    const order = ["intent_hash"];
+    if (receipt.hash_chain.governance_hash) order.push("governance_hash");
+    if (receipt.hash_chain.authorization_hash) order.push("authorization_hash");
+    order.push("execution_hash", "receipt_hash");
+    return order;
+  })();
+
+  // Recompute receipt hash using chain_order
+  const contentObj = { receipt_id: receipt.receipt_id };
+  for (const field of chainOrder) {
+    if (field !== "receipt_hash") {
+      contentObj[field] = receipt.hash_chain[field];
+    }
+  }
+  contentObj.timestamp = receipt.timestamp;
+  const content = JSON.stringify(contentObj);
   const computed = sha256(content);
 
   if (computed !== receipt.hash_chain.receipt_hash) {

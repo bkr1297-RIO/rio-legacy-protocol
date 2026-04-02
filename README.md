@@ -64,6 +64,8 @@ The RIO Receipt Protocol gives every AI action a cryptographic receipt — a has
 
 ```
 rio-receipt-protocol/
+├── index.mjs                    # npm package entry point (unified exports)
+├── index.d.ts                   # TypeScript type declarations
 ├── spec/                        # The protocol specification
 │   ├── receipt-schema.json      # JSON Schema for RIO Receipts (v2.2)
 │   ├── ledger-format.md         # Ledger hash chain specification
@@ -71,86 +73,152 @@ rio-receipt-protocol/
 ├── reference/                   # Reference implementation (Node.js, zero dependencies)
 │   ├── receipts.mjs             # Receipt generation and verification
 │   ├── ledger.mjs               # Tamper-evident ledger (in-memory + JSON file)
-│   └── verifier.mjs             # Standalone verification (receipts, chains, cross-checks)
+│   ├── verifier.mjs             # Standalone verification (receipts, chains, cross-checks)
+│   └── web_verifier.js          # Browser-compatible verifier (Web Crypto API)
+├── python/                      # Python package (pip install rio-receipt-protocol)
+│   ├── rio_receipt_protocol/    # Python module (zero required dependencies)
+│   ├── tests/                   # Python conformance tests (29 tests)
+│   └── pyproject.toml           # PyPI packaging configuration
 ├── cli/                         # Command-line verifier tool
 │   └── verify.mjs               # rio-verify CLI
-├── tests/                       # Conformance test suite
+├── docs/                        # Documentation
+│   └── integration-guide.md     # OpenAI, Anthropic, LangChain integration examples
+├── tests/                       # Node.js conformance test suite
 │   └── conformance.test.mjs     # 29 tests across 8 categories
 ├── examples/                    # Usage examples
 │   └── basic-usage.mjs          # Complete flow: intent → receipt → ledger → verify
-└── package.json
+├── package.json                 # npm package configuration
+└── CHANGELOG.md                 # Version history
 ```
 
-The reference implementation has **zero external dependencies**. It uses only Node.js built-in modules (`crypto`, `fs`). The spec documents define the protocol independent of any implementation language.
+Both the Node.js and Python implementations have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library. The spec documents define the protocol independent of any implementation language.
 
 ---
 
 ## Quick Start
 
-### Run the Example
+### Install
+
+```bash
+# Node.js / npm
+npm install rio-receipt-protocol
+
+# Python / pip
+pip install rio-receipt-protocol
+```
+
+Both packages have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library.
+
+### Node.js — Hello World
+
+```javascript
+import {
+  hashIntent, hashExecution, generateReceipt,
+  verifyReceipt, createLedger
+} from "rio-receipt-protocol";
+
+// 1. Hash the intent (what was requested)
+const intentHash = hashIntent({
+  intent_id: "i-001", action: "send_email", agent_id: "agent-1",
+  parameters: { to: "user@example.com", subject: "Hello" },
+  timestamp: new Date().toISOString(),
+});
+
+// 2. Hash the execution (what actually happened)
+const executionHash = hashExecution({
+  intent_id: "i-001", action: "send_email",
+  result: "sent", connector: "smtp",
+  timestamp: new Date().toISOString(),
+});
+
+// 3. Generate a receipt binding both hashes
+const receipt = generateReceipt({
+  intentHash, executionHash,
+  intentId: "i-001", action: "send_email", agentId: "agent-1",
+});
+
+// 4. Verify it
+console.log(verifyReceipt(receipt).valid); // true
+
+// 5. Write to a tamper-evident ledger
+const ledger = createLedger();
+ledger.append({
+  intentId: "i-001", action: "send_email", agentId: "agent-1",
+  status: "executed", detail: "Email sent",
+  receiptHash: receipt.hash_chain.receipt_hash,
+});
+console.log(ledger.verifyChain().valid); // true
+```
+
+### Python — Hello World
+
+```python
+from rio_receipt_protocol import (
+    hash_intent, hash_execution, generate_receipt,
+    verify_receipt, create_ledger
+)
+
+# 1. Hash the intent
+intent_hash = hash_intent(
+    intent_id="i-001", action="send_email", agent_id="agent-1",
+    parameters={"to": "user@example.com", "subject": "Hello"},
+    timestamp="2026-04-01T00:00:00.000Z",
+)
+
+# 2. Hash the execution
+execution_hash = hash_execution(
+    intent_id="i-001", action="send_email",
+    result="sent", connector="smtp",
+    timestamp="2026-04-01T00:00:01.000Z",
+)
+
+# 3. Generate and verify a receipt
+receipt = generate_receipt(
+    intent_hash=intent_hash, execution_hash=execution_hash,
+    intent_id="i-001", action="send_email", agent_id="agent-1",
+)
+assert verify_receipt(receipt)["valid"]
+
+# 4. Write to a tamper-evident ledger
+ledger = create_ledger()
+ledger.append(
+    intent_id="i-001", action="send_email", agent_id="agent-1",
+    status="executed", detail="Email sent",
+    receipt_hash=receipt["hash_chain"]["receipt_hash"],
+)
+assert ledger.verify_chain()["valid"]
+```
+
+Three hashes, one receipt, one ledger entry. Your AI system now produces verifiable proof of every action.
+
+### Run From Source
 
 ```bash
 git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
 cd rio-receipt-protocol
+
+# Run the example
 node examples/basic-usage.mjs
-```
 
-This demonstrates both receipt types: a **proof-layer receipt** (3-hash chain — just proof of what happened) and a **governed receipt** (5-hash chain — with governance evaluation and human approval). Both are written to the same ledger and verified.
-
-### Run the Conformance Tests
-
-```bash
+# Run conformance tests (Node.js — 29 tests)
 node tests/conformance.test.mjs
-```
 
-29 tests across 8 categories: proof-layer receipts, governed receipts, SHA-256 integrity, ledger hash chain, tamper detection, cross-verification, batch verification, and optional extensions. Exit code 0 means the implementation conforms to the protocol.
+# Run conformance tests (Python — 29 tests)
+cd python && PYTHONPATH=. python3 tests/test_conformance.py
 
-### Verify a Live Gateway
-
-```bash
+# Verify a live gateway
 node cli/verify.mjs remote https://rio-gateway.onrender.com
 ```
 
-The CLI connects to a running RIO Gateway, checks its health, and verifies any available receipts — all locally using SHA-256. No data is sent to any external service.
+### Framework Integration
 
-### Use in Your Own Code
+See the **[Integration Guide](docs/integration-guide.md)** for complete examples with:
 
-```javascript
-import { generateReceipt, verifyReceipt, hashIntent,
-         hashExecution } from "./reference/receipts.mjs";
-import { createLedger } from "./reference/ledger.mjs";
-
-// 1. Hash the intent and execution
-const intentHash = hashIntent({
-  intent_id, action, agent_id, parameters, timestamp
-});
-const executionHash = hashExecution({
-  intent_id, action, result, connector, timestamp
-});
-
-// 2. Generate a proof-layer receipt (3-hash chain)
-const receipt = generateReceipt({
-  intent_hash: intentHash,
-  execution_hash: executionHash,
-  intent_id, action, agent_id,
-});
-
-// 3. Verify the receipt
-const result = verifyReceipt(receipt);
-console.log(result.valid); // true
-
-// 4. Write to a ledger and verify the chain
-const ledger = createLedger({ filePath: "./my-ledger.json" });
-ledger.append({
-  intent_id, action, agent_id,
-  status: "executed", detail: "Action completed",
-  receipt_hash: receipt.hash_chain.receipt_hash,
-});
-const chainResult = ledger.verifyChain();
-console.log(chainResult.valid); // true
-```
-
-That's it. Three hashes, one receipt, one ledger entry. Your AI system now produces verifiable proof of every action.
+- **OpenAI** (Node.js + Python)
+- **Anthropic Claude** (Node.js + Python)
+- **LangChain** (callback handler for automatic receipt generation)
+- **Multi-agent systems** (shared ledger across agents)
+- **Governed receipts** (human-in-the-loop 5-hash chains)
 
 ---
 

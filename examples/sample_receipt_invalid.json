@@ -1,28 +1,25 @@
 {
-  "id": "receipt-123",
-  "agent_id": "agent-456",
-  "timestamp": "2026-04-01T16:00:00Z",
-  "action": {
-    "type": "send_email",
-    "details": {
-      "to": "test@example.com",
-      "subject": "Hello from RIO"
-    }
+  "receipt_id": "82b99ccc-593f-4c27-a090-5d6e8deb72f1",
+  "receipt_type": "action",
+  "intent_id": "e3a19336-dd82-496f-812b-e6f1636e96f2",
+  "action": "send_email",
+  "agent_id": "copilot-agent-001",
+  "authorized_by": null,
+  "timestamp": "2026-04-02T00:58:23.946Z",
+  "hash_chain": {
+    "intent_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "governance_hash": null,
+    "authorization_hash": null,
+    "execution_hash": "928bd98b1e0f6896bf8b940a773924fc2e0768b321ecebe87ecc5654b7765cce",
+    "receipt_hash": "5bda308e873bead2ffcacb4678be11f647b5311c4239891048aa5255c19deb7e"
   },
-  "ai_proposal": {
-    "model": "gpt-4",
-    "confidence": 0.95
-  },
-  "human_approval": {
-    "approved_by": "Brian",
-    "timestamp": "2026-04-01T16:01:00Z"
-  },
-  "payload": {
-    "intent_hash": "abc123def456",
-    "approval_hash": "ghi789jkl012"
-  },
-  "public_key": "2001a5a70e4a58b9484dbe60470b68de21b923f7274d22d9216909d5aef2d1c1",
-  "verification_method": "ed25519",
-  "ledger_hash": "bf9bed4d4cc5b5218133883caf8461120395b75042e76bd7b657f6b8c2a9fb30",
-  "signature": "8d15b041f793a39922277f0c0feec2bdd5e803436f6380a2f9bb78477fedec1d6b0d82c59b26bcc24b0df30ad2c71837b94d96503b79c3ae7f9db0173775e009"
+  "verification": {
+    "algorithm": "SHA-256",
+    "chain_length": 3,
+    "chain_order": [
+      "intent_hash",
+      "execution_hash",
+      "receipt_hash"
+    ]
+  }
 }

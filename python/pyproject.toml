@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rio-receipt-protocol"
+version = "2.2.0"
+description = "Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails. Zero dependencies."
+readme = "README.md"
+license = {text = "MIT OR Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "RIO Protocol Contributors"}
+]
+keywords = [
+    "ai-governance", "ai-receipts", "cryptographic-proof", "tamper-evident",
+    "hash-chain", "ledger", "ai-audit", "ai-safety", "sha256", "ed25519",
+    "openai", "anthropic", "langchain", "ai-agent", "compliance", "audit-trail",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://rioprotocol-q9cry3ny.manus.space"
+Repository = "https://github.com/bkr1297-RIO/rio-receipt-protocol"
+Issues = "https://github.com/bkr1297-RIO/rio-receipt-protocol/issues"
+Changelog = "https://github.com/bkr1297-RIO/rio-receipt-protocol/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+signing = ["pynacl>=1.5.0"]
+
+[tool.setuptools.packages.find]
+include = ["rio_receipt_protocol*"]

@@ -1,14 +1,24 @@
 {
-  "name": "@rio-protocol/receipt",
-  "version": "2.1.0",
-  "description": "RIO Receipt Protocol — Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails.",
+  "name": "rio-receipt-protocol",
+  "version": "2.2.0",
+  "description": "Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails. Zero dependencies.",
   "type": "module",
-  "main": "reference/receipts.mjs",
+  "main": "index.mjs",
+  "types": "index.d.ts",
   "exports": {
-    ".": "./reference/receipts.mjs",
-    "./receipts": "./reference/receipts.mjs",
-    "./ledger": "./reference/ledger.mjs",
-    "./verifier": "./reference/verifier.mjs"
+    ".": {
+      "import": "./index.mjs",
+      "types": "./index.d.ts"
+    },
+    "./receipts": {
+      "import": "./reference/receipts.mjs"
+    },
+    "./ledger": {
+      "import": "./reference/ledger.mjs"
+    },
+    "./verifier": {
+      "import": "./reference/verifier.mjs"
+    }
   },
   "bin": {
     "rio-verify": "./cli/verify.mjs"
@@ -19,15 +29,23 @@
   },
   "keywords": [
     "ai-governance",
-    "cryptographic-receipts",
-    "tamper-evident-ledger",
+    "ai-receipts",
+    "cryptographic-proof",
+    "tamper-evident",
     "hash-chain",
+    "ledger",
     "ai-audit",
-    "human-in-the-loop",
+    "ai-safety",
     "sha256",
     "ed25519",
-    "ai-safety",
-    "compliance"
+    "openai",
+    "anthropic",
+    "langchain",
+    "ai-agent",
+    "compliance",
+    "audit-trail",
+    "verifiable",
+    "zero-dependencies"
   ],
   "author": "RIO Protocol Contributors",
   "license": "MIT OR Apache-2.0",
@@ -35,16 +53,23 @@
     "type": "git",
     "url": "https://github.com/bkr1297-RIO/rio-receipt-protocol"
   },
+  "homepage": "https://rioprotocol-q9cry3ny.manus.space",
+  "bugs": {
+    "url": "https://github.com/bkr1297-RIO/rio-receipt-protocol/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
   "files": [
+    "index.mjs",
+    "index.d.ts",
     "reference/",
     "cli/",
     "spec/",
     "tests/",
     "examples/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ]
 }
