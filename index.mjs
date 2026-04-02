@@ -19,6 +19,8 @@ export {
   hashAuthorization,
   generateReceipt,
   verifyReceipt,
+  generateKeyPair,
+  signReceipt,
 } from "./reference/receipts.mjs";
 
 // ─── Ledger ─────────────────────────────────────────────────────────

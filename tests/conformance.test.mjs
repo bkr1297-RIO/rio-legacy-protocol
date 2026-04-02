@@ -16,6 +16,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   generateReceipt, verifyReceipt, hashIntent,
   hashGovernance, hashAuthorization, hashExecution, sha256,
+  generateKeyPair, signReceipt,
 } from "../reference/receipts.mjs";
 import { createLedger, GENESIS_HASH } from "../reference/ledger.mjs";
 import {
@@ -509,6 +510,184 @@ test("receipt without optional extensions still verifies", () => {
   assert(!receipt.identity_binding, "Should not have identity_binding");
   const result = verifyReceipt(receipt);
   assert(result.valid, "Receipt without extensions should verify");
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 9: ED25519 SIGNING & VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("9. Ed25519 Signing & Verification");
+
+test("generateKeyPair produces valid Ed25519 key pair", () => {
+  const keys = generateKeyPair();
+  assert(keys.privateKeyHex, "Missing privateKeyHex");
+  assert(keys.publicKeyHex, "Missing publicKeyHex");
+  assert(keys.privateKeyObj, "Missing privateKeyObj");
+  assert(keys.publicKeyObj, "Missing publicKeyObj");
+  assertEqual(keys.publicKeyHex.length, 64, "Public key should be 32 bytes (64 hex chars)");
+});
+
+test("signReceipt adds signature_hex to identity_binding", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+  });
+  assert(receipt.identity_binding, "Missing identity_binding after signing");
+  assert(receipt.identity_binding.signature_hex, "Missing signature_hex");
+  assertEqual(receipt.identity_binding.signature_hex.length, 128, "Ed25519 signature should be 64 bytes (128 hex chars)");
+  assertEqual(receipt.identity_binding.signer_id, "test-signer");
+  assertEqual(receipt.identity_binding.verification_method, "ed25519-nacl");
+  assertEqual(receipt.identity_binding.public_key_hex, keys.publicKeyHex);
+  assertEqual(receipt.identity_binding.signature_payload_hash, receipt.hash_chain.receipt_hash);
+  assert(receipt.identity_binding.signed_at, "Missing signed_at timestamp");
+  assert(/^\d{4}-\d{2}-\d{2}T/.test(receipt.identity_binding.signed_at), "signed_at should be ISO 8601");
+});
+
+test("signed receipt passes standalone verification with signature check", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+  });
+  const result = standaloneVerify(receipt);
+  assert(result.valid, `Hash verification failed: ${result.errors?.join(", ")}`);
+  assert(result.signature_valid === true, "Signature should be VALID");
+});
+
+test("tampered receipt_hash invalidates signature", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+  });
+  // Tamper with the receipt hash after signing
+  receipt.hash_chain.receipt_hash = sha256("tampered-data");
+  const result = standaloneVerify(receipt);
+  // Hash verification should fail (recomputed != stored)
+  assert(!result.valid, "Tampered receipt should fail hash verification");
+});
+
+test("tampered signature_hex fails verification", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+  });
+  // Tamper with the signature itself
+  const sig = receipt.identity_binding.signature_hex;
+  receipt.identity_binding.signature_hex = sig.slice(0, -2) + (sig.slice(-2) === "00" ? "ff" : "00");
+  const result = standaloneVerify(receipt);
+  assert(result.signature_valid === false, "Tampered signature should fail verification");
+});
+
+test("wrong public key fails signature verification", () => {
+  const keys1 = generateKeyPair();
+  const keys2 = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  // Sign with key1 but embed key2's public key
+  signReceipt(receipt, {
+    privateKey: keys1.privateKeyObj,
+    publicKeyHex: keys2.publicKeyHex,
+    signerId: "test-signer",
+  });
+  const result = standaloneVerify(receipt);
+  assert(result.signature_valid === false, "Wrong public key should fail verification");
+});
+
+test("unsigned receipt returns signature_valid=null (not checked)", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  const result = standaloneVerify(receipt);
+  assert(result.valid, "Unsigned receipt hash should still verify");
+  assert(result.signature_valid === null || result.signature_valid === undefined,
+    "Unsigned receipt should not have signature_valid=true or false");
+});
+
+test("signed governed receipt verifies end-to-end", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const gov = makeGovernance(intent.intent_id);
+  const auth = makeAuthorization(intent.intent_id);
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), governance_hash: hashGovernance(gov),
+    authorization_hash: hashAuthorization(auth), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    authorized_by: auth.authorized_by,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "rio-gateway",
+  });
+  assertEqual(receipt.receipt_type, "governed_action");
+  assertEqual(receipt.verification.chain_length, 5);
+  const result = standaloneVerify(receipt);
+  assert(result.valid, `Governed receipt hash failed: ${result.errors?.join(", ")}`);
+  assert(result.signature_valid === true, "Governed receipt signature should be VALID");
+});
+
+test("signed receipt cross-verifies against ledger entry", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "rio-gateway",
+  });
+  const ledger = createLedger();
+  const entry = ledger.append({
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    status: "executed", detail: "ok", receipt_hash: receipt.hash_chain.receipt_hash,
+    intent_hash: receipt.hash_chain.intent_hash,
+  });
+  const crossResult = verifyReceiptAgainstLedger(receipt, entry);
+  assert(crossResult.valid, `Cross-verification failed: ${crossResult.errors?.join(", ")}`);
+  const standaloneResult = standaloneVerify(receipt);
+  assert(standaloneResult.signature_valid === true, "Signature should verify after ledger append");
 });
 
 // ─── Results ─────────────────────────────────────────────────────────

@@ -152,8 +152,9 @@ When a receipt is signed, the `identity_binding` object MUST be included:
 |-------|------|-------------|
 | `signer_id` | string | Identifier of the signing authority |
 | `public_key_hex` | string | Hex-encoded Ed25519 public key (64 chars) |
-| `signature_payload_hash` | string | The receipt_hash that was signed |
-| `verification_method` | string | MUST be "ed25519-nacl" |
+| `signature_hex` | string | Hex-encoded Ed25519 signature (128 chars / 64 bytes) |
+| `signature_payload_hash` | string | The receipt_hash that was signed (MUST equal `hash_chain.receipt_hash`) |
+| `verification_method` | string | MUST be `"ed25519-nacl"` |
 | `ed25519_signed` | boolean | MUST be `true` |
 
 ### 4.4 Signature Verification

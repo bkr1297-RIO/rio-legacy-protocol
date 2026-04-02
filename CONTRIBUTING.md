@@ -1,6 +1,6 @@
 # Contributing to the RIO Receipt Protocol
 
-Thank you for your interest in contributing to the RIO Receipt Protocol. This is a protocol, not just a library — changes affect every conforming implementation. Please read this guide before submitting issues or pull requests.
+Thank you for your interest in contributing to the RIO Receipt Protocol. This is an open standard for cryptographic proof of AI actions, and contributions that strengthen the spec, improve the reference implementations, or expand test coverage are welcome.
 
 ---
 
@@ -20,16 +20,16 @@ Requires Node.js 18 or later. Zero dependencies — uses only `node:crypto` and 
 
 ```bash
 cd python
-PYTHONPATH=. python3 tests/test_conformance.py
+PYTHONPATH=. python tests/test_conformance.py
 ```
 
-Requires Python 3.9 or later. Zero required dependencies for core tests. Ed25519 signing tests require the optional `pynacl` package (`pip install rio-receipt-protocol[signing]`).
+Requires Python 3.9 or later. Zero required dependencies for core tests. The test suite uses a custom runner (not pytest) to maintain the zero-dependency principle. Ed25519 signing tests require the optional `pynacl` package (`pip install rio-receipt-protocol[signing]`).
 
 ---
 
 ## How to Report a Bug
 
-Open a [GitHub issue](https://github.com/bkr1297-RIO/rio-receipt-protocol/issues/new?template=bug_report.md) using the **Bug Report** template. Include:
+Open a [GitHub issue](https://github.com/bkr1297-RIO/rio-receipt-protocol/issues) using the **Bug Report** template. Include:
 
 - A clear description of the problem
 - Steps to reproduce
@@ -46,7 +46,7 @@ This is a protocol, not just code. Changes to the specification documents (`spec
 
 To propose a spec change:
 
-1. Open a [GitHub issue](https://github.com/bkr1297-RIO/rio-receipt-protocol/issues/new?template=spec_change.md) using the **Spec Change** template
+1. Open a [GitHub issue](https://github.com/bkr1297-RIO/rio-receipt-protocol/issues) using the **Spec Change** template
 2. Apply the `spec-change` label
 3. Include:
    - Which spec document is affected (`receipt-schema.json`, `ledger-format.md`, or `signing-rules.md`)

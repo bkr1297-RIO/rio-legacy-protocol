@@ -151,10 +151,14 @@
           "pattern": "^[a-f0-9]{64}$",
           "description": "Hex-encoded Ed25519 public key of the signer."
         },
+        "signature_hex": {
+          "type": ["string", "null"],
+          "description": "Hex-encoded Ed25519 signature of the receipt_hash. 128 hex characters (64 bytes). Present only when ed25519_signed is true."
+        },
         "signature_payload_hash": {
           "type": ["string", "null"],
           "pattern": "^[a-f0-9]{64}$",
-          "description": "SHA-256 hash of the payload that was signed."
+          "description": "SHA-256 hash of the payload that was signed. MUST equal hash_chain.receipt_hash."
         },
         "verification_method": {
           "type": ["string", "null"],

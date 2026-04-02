@@ -13,7 +13,7 @@
  * @license MIT OR Apache-2.0
  */
 
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey, verify } from "node:crypto";
 
 const GENESIS_HASH =
   "0000000000000000000000000000000000000000000000000000000000000000";
@@ -105,6 +105,48 @@ export function verifyReceipt(receipt) {
     errors.push(`Receipt hash mismatch: computed ${computedHash}, stored ${storedHash}`);
   }
 
+  // 5. Ed25519 signature verification (if present)
+  let signatureValid = null; // null = not signed, true/false = verification result
+  const ib = receipt.identity_binding;
+  if (ib && ib.ed25519_signed === true) {
+    signatureValid = false; // assume invalid until proven
+
+    if (!ib.public_key_hex || !/^[a-f0-9]{64}$/.test(ib.public_key_hex)) {
+      errors.push("Ed25519 signed but missing or invalid public_key_hex");
+    } else if (!ib.signature_hex || typeof ib.signature_hex !== "string") {
+      errors.push("Ed25519 signed but missing signature_hex");
+    } else if (!ib.signature_payload_hash) {
+      errors.push("Ed25519 signed but missing signature_payload_hash");
+    } else {
+      // Verify that signature_payload_hash matches the receipt_hash
+      if (ib.signature_payload_hash !== receipt.hash_chain.receipt_hash) {
+        errors.push(
+          `signature_payload_hash (${ib.signature_payload_hash}) does not match receipt_hash (${receipt.hash_chain.receipt_hash})`
+        );
+      }
+
+      // Reconstruct the public key from raw hex bytes
+      try {
+        const pubKeyBytes = Buffer.from(ib.public_key_hex, "hex");
+        // Build Ed25519 SPKI DER: 12-byte header + 32-byte key
+        const spkiHeader = Buffer.from("302a300506032b6570032100", "hex");
+        const spkiDer = Buffer.concat([spkiHeader, pubKeyBytes]);
+        const publicKey = createPublicKey({ key: spkiDer, format: "der", type: "spki" });
+
+        const sigBytes = Buffer.from(ib.signature_hex, "hex");
+        const payload = Buffer.from(receipt.hash_chain.receipt_hash, "utf-8");
+
+        signatureValid = verify(null, payload, publicKey, sigBytes);
+        if (!signatureValid) {
+          errors.push("Ed25519 signature verification FAILED");
+        }
+      } catch (err) {
+        errors.push(`Ed25519 verification error: ${err.message}`);
+        signatureValid = false;
+      }
+    }
+  }
+
   return {
     valid: hashValid && errors.length === 0,
     receipt_id: receipt.receipt_id,
@@ -112,6 +154,7 @@ export function verifyReceipt(receipt) {
     computed_hash: computedHash,
     stored_hash: storedHash,
     chain_length: chainOrder.length,
+    signature_valid: signatureValid,
     errors,
   };
 }

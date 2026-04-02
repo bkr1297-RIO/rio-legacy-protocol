@@ -30,6 +30,7 @@ export interface IngestionProvenance {
 export interface IdentityBinding {
   signer_id: string | null;
   public_key_hex: string | null;
+  signature_hex: string | null;
   signature_payload_hash: string | null;
   verification_method: string | null;
   ed25519_signed: boolean;
@@ -59,6 +60,7 @@ export interface VerificationResult {
 
 export interface StandaloneVerificationResult extends VerificationResult {
   chain_length: number;
+  signature_valid: boolean | null;
   errors: string[];
 }
 
@@ -174,6 +176,19 @@ export function hashAuthorization(authorization: {
 
 export function generateReceipt(data: GenerateReceiptData): Receipt;
 export function verifyReceipt(receipt: Receipt): VerificationResult;
+
+export interface KeyPair {
+  privateKeyHex: string;
+  publicKeyHex: string;
+  privateKeyObj: object;
+  publicKeyObj: object;
+}
+
+export function generateKeyPair(): KeyPair;
+export function signReceipt(
+  receipt: Receipt,
+  options: { privateKey: object; publicKeyHex: string; signerId: string }
+): Receipt;
 
 // ─── Ledger ─────────────────────────────────────────────────────────
 

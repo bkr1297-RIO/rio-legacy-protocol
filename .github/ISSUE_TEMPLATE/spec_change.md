@@ -1,38 +1,36 @@
 ---
-name: Spec Change
-about: Propose a change to the RIO Receipt Protocol specification documents
+name: Spec Change Proposal
+about: Propose a change to the RIO Receipt Protocol specification
 title: "[SPEC] "
 labels: spec-change
 assignees: ''
 ---
 
-## Affected Spec Document
+## Which Spec Document
 
-Which specification document does this change affect?
-
-- [ ] `spec/receipt-schema.json` — Receipt format and field definitions
+- [ ] `spec/receipt-schema.json` — Receipt format and fields
 - [ ] `spec/ledger-format.md` — Ledger entry structure and hash chain rules
 - [ ] `spec/signing-rules.md` — Signing algorithms and verification procedures
 
 ## Proposed Change
 
-Describe the change in detail. Include the current behavior and the proposed behavior.
+Describe the change in detail. Include the current behavior and the proposed new behavior. If modifying a schema, show the before and after.
 
 ## Rationale
 
-Why is this change necessary? What problem does it solve?
+Why is this change necessary? What problem does it solve? What use case does it enable?
 
 ## Backward Compatibility
 
-Does this change break existing conforming implementations?
+- [ ] This change is **fully backward compatible** — existing valid receipts and ledger entries remain valid
+- [ ] This change **breaks backward compatibility** — explain why this is justified and what migration path exists
 
-- [ ] **Non-breaking** — existing valid receipts and ledger entries remain valid
-- [ ] **Breaking** — existing implementations will need to update (explain migration path below)
+Describe the compatibility impact in detail. If this adds new fields, are they optional? If this changes existing fields, what happens to data produced under the current spec?
 
-### Migration Path (if breaking)
+## Conformance Test Impact
 
-Describe how existing implementations should update to conform to the new spec.
+Describe which conformance tests would need to be added, modified, or removed. New spec features must include conformance tests.
 
 ## Additional Context
 
-Add any references, related issues, or examples from other protocols that inform this proposal.
+Add any references, prior art, or related issues here.

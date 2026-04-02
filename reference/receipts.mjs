@@ -14,7 +14,7 @@
  * @license MIT OR Apache-2.0
  */
 
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, generateKeyPairSync, sign, verify } from "node:crypto";
 
 /**
  * Compute SHA-256 hash of a string.
@@ -184,11 +184,80 @@ export function generateReceipt(data) {
     receipt.identity_binding = {
       signer_id: data.identity_binding.signer_id || null,
       public_key_hex: data.identity_binding.public_key_hex || null,
+      signature_hex: data.identity_binding.signature_hex || null,
       signature_payload_hash: data.identity_binding.signature_payload_hash || null,
       verification_method: data.identity_binding.verification_method || null,
       ed25519_signed: data.identity_binding.ed25519_signed || false,
     };
   }
+
+  return receipt;
+}
+
+// ─── Ed25519 Key Generation ────────────────────────────────────────
+
+/**
+ * Generate an Ed25519 key pair for receipt signing.
+ *
+ * Returns raw key material as hex strings. The private key is the
+ * 32-byte seed (not the 64-byte NaCl-style expanded key). The public
+ * key is the 32-byte Ed25519 public key.
+ *
+ * @returns {{ privateKeyHex: string, publicKeyHex: string, privateKeyObj: object, publicKeyObj: object }}
+ */
+export function generateKeyPair() {
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+
+  // Export raw key bytes as hex
+  const publicKeyRaw = publicKey.export({ type: "spki", format: "der" });
+  // Ed25519 SPKI DER is 44 bytes: 12-byte header + 32-byte key
+  const publicKeyHex = publicKeyRaw.subarray(12).toString("hex");
+
+  const privateKeyRaw = privateKey.export({ type: "pkcs8", format: "der" });
+  // Ed25519 PKCS8 DER is 48 bytes: 16-byte header + 32-byte seed
+  const privateKeyHex = privateKeyRaw.subarray(16).toString("hex");
+
+  return { privateKeyHex, publicKeyHex, privateKeyObj: privateKey, publicKeyObj: publicKey };
+}
+
+// ─── Ed25519 Receipt Signing ───────────────────────────────────────
+
+/**
+ * Sign a receipt with Ed25519.
+ *
+ * The signed payload is the UTF-8 encoding of the 64-character hex
+ * receipt_hash string (per spec Section 4.2). The signature is stored
+ * in identity_binding.signature_hex as a lowercase hex string.
+ *
+ * This function mutates the receipt in place and also returns it.
+ *
+ * @param {object} receipt - A generated RIO Receipt (must have hash_chain.receipt_hash)
+ * @param {object} options
+ * @param {object} options.privateKey - Node.js crypto KeyObject (Ed25519 private key)
+ * @param {string} options.publicKeyHex - 64-char hex-encoded public key
+ * @param {string} options.signerId - Identifier of the signing authority
+ * @returns {object} The receipt with identity_binding populated
+ */
+export function signReceipt(receipt, { privateKey, publicKeyHex, signerId }) {
+  const receiptHash = receipt.hash_chain.receipt_hash;
+  if (!receiptHash || !/^[a-f0-9]{64}$/.test(receiptHash)) {
+    throw new Error("Cannot sign: receipt has no valid receipt_hash");
+  }
+
+  // Sign the UTF-8 bytes of the hex receipt_hash string
+  const payload = Buffer.from(receiptHash, "utf-8");
+  const signature = sign(null, payload, privateKey);
+  const signatureHex = signature.toString("hex");
+
+  receipt.identity_binding = {
+    signer_id: signerId,
+    public_key_hex: publicKeyHex,
+    signature_hex: signatureHex,
+    signature_payload_hash: receiptHash,
+    signed_at: new Date().toISOString(),
+    verification_method: "ed25519-nacl",
+    ed25519_signed: true,
+  };
 
   return receipt;
 }

@@ -18,7 +18,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey, verify } from "node:crypto";
 
 // ─── SHA-256 ─────────────────────────────────────────────────────────
 
@@ -277,9 +277,48 @@ async function main() {
       if (result.valid) {
         pass(`Receipt hash VALID`);
         pass(`Computed: ${result.computed}`);
-        if (receipt.identity_binding?.ed25519_signed) {
-          info(`Ed25519 signed by: ${receipt.identity_binding.signer_id}`);
+
+        // Ed25519 signature verification
+        const ib = receipt.identity_binding;
+        if (ib && ib.ed25519_signed === true) {
+          console.log("");
+          info(`Ed25519 signed by: ${ib.signer_id}`);
+          info(`Public key: ${ib.public_key_hex}`);
+
+          if (!ib.signature_hex) {
+            fail("Ed25519 signed but missing signature_hex field");
+          } else {
+            try {
+              // Verify signature_payload_hash matches receipt_hash
+              if (ib.signature_payload_hash !== receipt.hash_chain.receipt_hash) {
+                fail(`signature_payload_hash does not match receipt_hash`);
+              } else {
+                // Reconstruct public key from raw hex
+                const pubKeyBytes = Buffer.from(ib.public_key_hex, "hex");
+                const spkiHeader = Buffer.from("302a300506032b6570032100", "hex");
+                const spkiDer = Buffer.concat([spkiHeader, pubKeyBytes]);
+                const publicKey = createPublicKey({ key: spkiDer, format: "der", type: "spki" });
+
+                const sigBytes = Buffer.from(ib.signature_hex, "hex");
+                const payload = Buffer.from(receipt.hash_chain.receipt_hash, "utf-8");
+                const sigValid = verify(null, payload, publicKey, sigBytes);
+
+                if (sigValid) {
+                  pass(`Ed25519 signature VALID`);
+                } else {
+                  fail(`Ed25519 signature INVALID`);
+                  result.valid = false;
+                }
+              }
+            } catch (err) {
+              fail(`Ed25519 verification error: ${err.message}`);
+              result.valid = false;
+            }
+          }
+        } else {
+          info("Not signed (hash-only receipt)");
         }
+
         if (receipt.ingestion) {
           info(`Ingestion source: ${receipt.ingestion.source} via ${receipt.ingestion.channel}`);
         }

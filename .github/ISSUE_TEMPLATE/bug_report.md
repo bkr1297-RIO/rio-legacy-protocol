@@ -34,4 +34,4 @@ What actually happened. Include error messages, stack traces, or incorrect outpu
 
 ## Additional Context
 
-Add any other context about the problem here. If this relates to a specific conformance test, reference the test name.
+Add any other context about the problem here. If this relates to a specific conformance test, include the test name and category.
