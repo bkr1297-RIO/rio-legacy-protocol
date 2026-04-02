@@ -144,3 +144,104 @@ def verify_receipt(receipt: dict) -> dict:
         "receipt_id": receipt["receipt_id"],
         "receipt_type": receipt.get("receipt_type", "action"),
     }
+
+
+# ─── Ed25519 Signing (optional — requires no external dependencies) ──────────
+
+def generate_keypair() -> dict:
+    """
+    Generate an Ed25519 keypair using Python's standard library (3.12+)
+    or PyNaCl as fallback.
+
+    Returns dict with: private_key_hex, public_key_hex, private_key_obj
+    """
+    try:
+        # Python 3.12+ has Ed25519 in the standard library
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.hazmat.primitives.serialization import (
+            Encoding, NoEncryption, PrivateFormat, PublicFormat,
+        )
+        private_key = Ed25519PrivateKey.generate()
+        private_bytes = private_key.private_bytes(
+            Encoding.Raw, PrivateFormat.Raw, NoEncryption(),
+        )
+        public_bytes = private_key.public_key().public_bytes(
+            Encoding.Raw, PublicFormat.Raw,
+        )
+        return {
+            "private_key_hex": private_bytes.hex(),
+            "public_key_hex": public_bytes.hex(),
+            "private_key_obj": private_key,
+        }
+    except ImportError:
+        pass
+
+    try:
+        from nacl.signing import SigningKey
+        from nacl.encoding import HexEncoder
+        signing_key = SigningKey.generate()
+        return {
+            "private_key_hex": signing_key.encode(HexEncoder).decode(),
+            "public_key_hex": signing_key.verify_key.encode(HexEncoder).decode(),
+            "private_key_obj": signing_key,
+        }
+    except ImportError:
+        raise ImportError(
+            "Ed25519 signing requires either 'cryptography' or 'PyNaCl'. "
+            "Install one: pip install cryptography  OR  pip install pynacl"
+        )
+
+
+def sign_receipt(receipt: dict, private_key_obj, public_key_hex: str, signer_id: str) -> dict:
+    """
+    Sign a receipt with Ed25519.
+
+    The signed payload is the UTF-8 encoding of the 64-character hex
+    receipt_hash string (per spec Section 4.2). The signature is stored
+    in identity_binding.signature_hex as a lowercase hex string.
+
+    This function mutates the receipt in place and also returns it.
+
+    Args:
+        receipt: A generated RIO Receipt (must have hash_chain.receipt_hash)
+        private_key_obj: Ed25519 private key object (from generate_keypair)
+        public_key_hex: 64-char hex-encoded public key
+        signer_id: Identifier of the signing authority
+    """
+    receipt_hash = receipt.get("hash_chain", {}).get("receipt_hash", "")
+    if not receipt_hash or len(receipt_hash) != 64:
+        raise ValueError("Cannot sign: receipt has no valid receipt_hash")
+
+    payload = receipt_hash.encode("utf-8")
+
+    # Try cryptography library first, then PyNaCl
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        if isinstance(private_key_obj, Ed25519PrivateKey):
+            signature_bytes = private_key_obj.sign(payload)
+            signature_hex = signature_bytes.hex()
+        else:
+            raise TypeError("Not a cryptography key")
+    except (ImportError, TypeError):
+        from nacl.signing import SigningKey
+        if isinstance(private_key_obj, SigningKey):
+            signed = private_key_obj.sign(payload)
+            signature_hex = signed.signature.hex()
+        else:
+            raise TypeError(
+                "private_key_obj must be an Ed25519PrivateKey (cryptography) "
+                "or SigningKey (PyNaCl)"
+            )
+
+    from datetime import datetime, timezone
+    receipt["identity_binding"] = {
+        "signer_id": signer_id,
+        "public_key_hex": public_key_hex,
+        "signature_hex": signature_hex,
+        "signature_payload_hash": receipt_hash,
+        "signed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.") +
+                     f"{datetime.now(timezone.utc).microsecond // 1000:03d}Z",
+        "verification_method": "ed25519-nacl",
+        "ed25519_signed": True,
+    }
+    return receipt

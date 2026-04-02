@@ -1,17 +1,17 @@
 {
-  "receipt_id": "e27ac515-db68-40e5-b8e8-94c246781604",
+  "receipt_id": "f838c724-0fbc-43d4-b3a0-7a663efdd409",
   "receipt_type": "action",
-  "intent_id": "61f7ba79-455d-4cfd-b53f-0313300a4182",
+  "intent_id": "3a4a6d27-ce17-40d2-96f4-afe0d904e56f",
   "action": "send_email",
   "agent_id": "copilot-demo-001",
   "authorized_by": null,
-  "timestamp": "2026-04-02T15:36:43.039Z",
+  "timestamp": "2026-04-02T18:53:51.624Z",
   "hash_chain": {
-    "intent_hash": "33b8ed2d4bd6c362c43e320ca6bc951864775846b85af99a73f47741fab8ae4f",
+    "intent_hash": "b7095bcf2b98afd1b3b462185186c9d316a94b89f1a18fd59d050d732d9c450d",
     "governance_hash": null,
     "authorization_hash": null,
-    "execution_hash": "65fb67d877453411b6ec4779b8b5a48a07ba0e32dfde5ecfb3c462c54cd57f28",
-    "receipt_hash": "ea98d90d34944c634bee5e8e2d496aee0a86bf35d5419cd1e73686f907aad723"
+    "execution_hash": "9f742cc225b00b402a023784e899d225c8f16d870c3b6078330cd89cb16ce98e",
+    "receipt_hash": "ec60f1d5d7344568ef77683aca8f1337859df57e52467da884f1c7d4bca611f8"
   },
   "verification": {
     "algorithm": "SHA-256",
@@ -24,10 +24,10 @@
   },
   "identity_binding": {
     "signer_id": "rio-gateway-demo",
-    "public_key_hex": "0c47155d09678a8aaa9399b5804a0c4db56b977139c97a411c315310b35514cb",
-    "signature_hex": "ccf8f4ea425d4051cb1000dedaa17ad804d152a548b14ea072e434cff0168a4dba2b75187485f809f6a536aeeb7f6a04e146393d7ef060f6f884d3f8e4681904",
-    "signature_payload_hash": "ea98d90d34944c634bee5e8e2d496aee0a86bf35d5419cd1e73686f907aad723",
-    "signed_at": "2026-04-02T15:36:43.040Z",
+    "public_key_hex": "8d1ed80acabf981dacb6ce9e20d92f48539b87e928161aa801b69c113c61d2ea",
+    "signature_hex": "4d2f5f3f0a1d792b0b24d150138220a3c1912103871e1208cd9e27e0c15255964e4c4ed894b0e1dc2c46b3f36824a96f39fb263e17187bbdd7ccce970f5e6208",
+    "signature_payload_hash": "ec60f1d5d7344568ef77683aca8f1337859df57e52467da884f1c7d4bca611f8",
+    "signed_at": "2026-04-02T18:53:51.625Z",
     "verification_method": "ed25519-nacl",
     "ed25519_signed": true
   }

@@ -480,6 +480,22 @@ The protocol provides the following security guarantees:
 
 **Backward compatibility** — v2.2 extensions (ingestion, identity_binding, governed receipts) are optional. Core proof-layer receipts remain valid.
 
+### Scope Limitations
+
+This protocol does **not** guarantee:
+
+**Honest signers** — The protocol proves that a specific key signed a receipt. It cannot prove the signer was truthful about what happened.
+
+**Real-world truth** — A receipt records what the system claims occurred. It does not independently verify that the action happened in the physical world.
+
+**Trustworthy operators** — The ledger operator controls append access. A malicious operator could withhold entries (detectable by gap analysis) or run a parallel ledger.
+
+**Key security** — If a signing key is compromised, the attacker can produce valid signatures. Key management (rotation, revocation, HSM storage) is outside protocol scope.
+
+**Correct governance** — The protocol records governance decisions. It does not evaluate whether those decisions were wise, ethical, or correct.
+
+These limitations are inherent to any cryptographic proof system. External witnesses, public anchoring (Merkle roots, RFC 3161 timestamps), and multi-party signing can mitigate some of them.
+
 ---
 
 ## Specification Documents

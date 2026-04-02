@@ -1,6 +1,6 @@
 {
   "algorithm": "ed25519",
-  "public_key_hex": "0c47155d09678a8aaa9399b5804a0c4db56b977139c97a411c315310b35514cb",
+  "public_key_hex": "8d1ed80acabf981dacb6ce9e20d92f48539b87e928161aa801b69c113c61d2ea",
   "signer_id": "rio-gateway-demo",
   "note": "Use this public key to verify the receipt signature independently."
 }
