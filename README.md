@@ -1,5 +1,11 @@
 # RIO Receipt Protocol
 
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+[![Node.js: >=18](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org/)
+[![Python: >=3.9](https://img.shields.io/badge/Python-%3E%3D3.9-3776AB.svg)](https://www.python.org/)
+[![Tests: 58 conformance](https://img.shields.io/badge/Tests-58%20conformance-brightgreen.svg)](tests/)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-zero-orange.svg)](package.json)
+
 **Cryptographic proof for AI actions. Open standard. Zero dependencies.**
 
 ---
@@ -82,13 +88,24 @@ rio-receipt-protocol/
 ├── cli/                         # Command-line verifier tool
 │   └── verify.mjs               # rio-verify CLI
 ├── docs/                        # Documentation
-│   └── integration-guide.md     # OpenAI, Anthropic, LangChain integration examples
+│   ├── integration-guide.md     # OpenAI, Anthropic, LangChain integration examples
+│   └── architecture.md          # Architecture diagram and protocol positioning
 ├── tests/                       # Node.js conformance test suite
-│   └── conformance.test.mjs     # 29 tests across 8 categories
+│   ├── conformance.test.mjs     # 29 tests across 8 categories
+│   └── legacy/                  # Pre-v2.2 tests (Ed25519 signing)
 ├── examples/                    # Usage examples
-│   └── basic-usage.mjs          # Complete flow: intent → receipt → ledger → verify
+│   ├── basic-usage.mjs          # Complete flow: intent → receipt → ledger → verify
+│   ├── end-to-end.mjs           # Comprehensive 5-step demo (Node.js)
+│   ├── end-to-end.py            # Comprehensive 5-step demo (Python)
+│   ├── sample_receipt_valid.json     # Valid proof-layer receipt
+│   ├── sample_receipt_governed.json  # Valid governed receipt (5-hash)
+│   ├── sample_receipt_invalid.json   # Tampered receipt (for testing)
+│   └── sample_ledger.json            # Sample ledger with hash chain
 ├── package.json                 # npm package configuration
-└── CHANGELOG.md                 # Version history
+├── CHANGELOG.md                 # Version history
+├── CONTRIBUTING.md              # Contribution guidelines
+├── CODE_OF_CONDUCT.md           # Contributor Covenant v2.1
+└── SECURITY.md                  # Security policy and vulnerability reporting
 ```
 
 Both the Node.js and Python implementations have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library. The spec documents define the protocol independent of any implementation language.
@@ -106,6 +123,19 @@ npm install rio-receipt-protocol
 # Python / pip
 pip install rio-receipt-protocol
 ```
+
+> **Note:** The npm and PyPI packages are being prepared for initial publication. In the meantime, install from source:
+>
+> ```bash
+> # Node.js — clone and use directly
+> git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
+> # import from the local path in your project
+>
+> # Python — install from local source
+> git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
+> cd rio-receipt-protocol/python
+> pip install -e .
+> ```
 
 Both packages have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library.
 
@@ -457,6 +487,22 @@ The formal protocol specifications are in the `spec/` directory:
 These documents define the protocol independent of the reference implementation. Any language or platform can implement the protocol by following these specs and passing the conformance tests.
 
 For the full RIO governance protocol specification (authorization tokens, state machines, kill switches, policy binding), see the [Internet-Draft](https://github.com/bkr1297-RIO/rio-system/blob/main/spec/draft-rio-governance-00.md) in the RIO System repository.
+
+---
+
+## Architecture
+
+For a visual overview of where the RIO Receipt Protocol sits in a system, see the **[Architecture Document](docs/architecture.md)**.
+
+---
+
+## Contributing
+
+Contributions are welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for how to run tests, report bugs, propose spec changes, and submit pull requests.
+
+This project follows the **[Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md)**.
+
+For security vulnerabilities, see **[SECURITY.md](SECURITY.md)**.
 
 ---
 
