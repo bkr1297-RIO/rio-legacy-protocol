@@ -48,13 +48,13 @@ async function governedCompletion(prompt, agentId = "openai-agent") {
   const timestamp = new Date().toISOString();
 
   // 1. Hash the intent BEFORE calling OpenAI
-  const intentHash = hashIntent(
-    intentId,
-    "chat_completion",
-    agentId,
-    { model: "gpt-4o", prompt },
-    timestamp
-  );
+  const intentHash = hashIntent({
+    intent_id: intentId,
+    action: "chat_completion",
+    agent_id: agentId,
+    parameters: { model: "gpt-4o", prompt },
+    timestamp,
+  });
 
   // 2. Call OpenAI
   const completion = await openai.chat.completions.create({
@@ -63,21 +63,21 @@ async function governedCompletion(prompt, agentId = "openai-agent") {
   });
 
   // 3. Hash the execution AFTER the call returns
-  const executionHash = hashExecution(
-    intentId,
-    "chat_completion",
-    { id: completion.id, model: completion.model, usage: completion.usage },
-    "openai-sdk",
-    new Date().toISOString()
-  );
+  const executionHash = hashExecution({
+    intent_id: intentId,
+    action: "chat_completion",
+    result: { id: completion.id, model: completion.model, usage: completion.usage },
+    connector: "openai-sdk",
+    timestamp: new Date().toISOString(),
+  });
 
   // 4. Generate the receipt
   const receipt = generateReceipt({
-    intentHash,
-    executionHash,
-    intentId,
+    intent_hash: intentHash,
+    execution_hash: executionHash,
+    intent_id: intentId,
     action: "chat_completion",
-    agentId,
+    agent_id: agentId,
   });
 
   // 5. Verify immediately
@@ -157,13 +157,13 @@ async function governedMessage(prompt, agentId = "claude-agent") {
   const timestamp = new Date().toISOString();
 
   // 1. Hash the intent
-  const intentHash = hashIntent(
-    intentId,
-    "message_create",
-    agentId,
-    { model: "claude-sonnet-4-20250514", prompt },
-    timestamp
-  );
+  const intentHash = hashIntent({
+    intent_id: intentId,
+    action: "message_create",
+    agent_id: agentId,
+    parameters: { model: "claude-sonnet-4-20250514", prompt },
+    timestamp,
+  });
 
   // 2. Call Anthropic
   const message = await anthropic.messages.create({
@@ -173,21 +173,21 @@ async function governedMessage(prompt, agentId = "claude-agent") {
   });
 
   // 3. Hash the execution
-  const executionHash = hashExecution(
-    intentId,
-    "message_create",
-    { id: message.id, model: message.model, usage: message.usage, stop_reason: message.stop_reason },
-    "anthropic-sdk",
-    new Date().toISOString()
-  );
+  const executionHash = hashExecution({
+    intent_id: intentId,
+    action: "message_create",
+    result: { id: message.id, model: message.model, usage: message.usage, stop_reason: message.stop_reason },
+    connector: "anthropic-sdk",
+    timestamp: new Date().toISOString(),
+  });
 
   // 4. Generate the receipt
   const receipt = generateReceipt({
-    intentHash,
-    executionHash,
-    intentId,
+    intent_hash: intentHash,
+    execution_hash: executionHash,
+    intent_id: intentId,
     action: "message_create",
-    agentId,
+    agent_id: agentId,
   });
 
   const result = verifyReceipt(receipt);
@@ -348,25 +348,39 @@ async function trackedInvoke(llm, prompt, agentId = "langchain-agent") {
   const intentId = crypto.randomUUID();
   const timestamp = new Date().toISOString();
 
-  const intentHash = hashIntent(intentId, "llm_call", agentId,
-    { model: llm.modelName, prompt }, timestamp);
+  const intentHash = hashIntent({
+    intent_id: intentId,
+    action: "llm_call",
+    agent_id: agentId,
+    parameters: { model: llm.modelName, prompt },
+    timestamp,
+  });
 
   const response = await llm.invoke(prompt);
 
-  const executionHash = hashExecution(intentId, "llm_call",
-    { content_length: response.content.length },
-    "langchain", new Date().toISOString());
+  const executionHash = hashExecution({
+    intent_id: intentId,
+    action: "llm_call",
+    result: { content_length: response.content.length },
+    connector: "langchain",
+    timestamp: new Date().toISOString(),
+  });
 
   const receipt = generateReceipt({
-    intentHash, executionHash, intentId,
-    action: "llm_call", agentId,
+    intent_hash: intentHash,
+    execution_hash: executionHash,
+    intent_id: intentId,
+    action: "llm_call",
+    agent_id: agentId,
   });
 
   ledger.append({
-    intentId, action: "llm_call", agentId,
+    intent_id: intentId,
+    action: "llm_call",
+    agent_id: agentId,
     status: "executed",
     detail: `LangChain call (${llm.modelName})`,
-    receiptHash: receipt.hash_chain.receipt_hash,
+    receipt_hash: receipt.hash_chain.receipt_hash,
   });
 
   return { response, receipt };
@@ -391,24 +405,40 @@ const ledger = createLedger();
 // Agent A: Research agent
 async function researchAgent(query) {
   const intentId = crypto.randomUUID();
-  const intentHash = hashIntent(intentId, "web_search", "agent-research",
-    { query }, new Date().toISOString());
+
+  const intentHash = hashIntent({
+    intent_id: intentId,
+    action: "web_search",
+    agent_id: "agent-research",
+    parameters: { query },
+    timestamp: new Date().toISOString(),
+  });
 
   const results = await searchWeb(query); // your search function
 
-  const executionHash = hashExecution(intentId, "web_search",
-    { result_count: results.length },
-    "search-api", new Date().toISOString());
+  const executionHash = hashExecution({
+    intent_id: intentId,
+    action: "web_search",
+    result: { result_count: results.length },
+    connector: "search-api",
+    timestamp: new Date().toISOString(),
+  });
 
   const receipt = generateReceipt({
-    intentHash, executionHash, intentId,
-    action: "web_search", agentId: "agent-research",
+    intent_hash: intentHash,
+    execution_hash: executionHash,
+    intent_id: intentId,
+    action: "web_search",
+    agent_id: "agent-research",
   });
 
   ledger.append({
-    intentId, action: "web_search", agentId: "agent-research",
-    status: "executed", detail: `Search: ${query}`,
-    receiptHash: receipt.hash_chain.receipt_hash,
+    intent_id: intentId,
+    action: "web_search",
+    agent_id: "agent-research",
+    status: "executed",
+    detail: `Search: ${query}`,
+    receipt_hash: receipt.hash_chain.receipt_hash,
   });
 
   return { results, receipt };
@@ -417,24 +447,40 @@ async function researchAgent(query) {
 // Agent B: Writing agent (uses research results)
 async function writingAgent(topic, sources) {
   const intentId = crypto.randomUUID();
-  const intentHash = hashIntent(intentId, "generate_text", "agent-writer",
-    { topic, source_count: sources.length }, new Date().toISOString());
+
+  const intentHash = hashIntent({
+    intent_id: intentId,
+    action: "generate_text",
+    agent_id: "agent-writer",
+    parameters: { topic, source_count: sources.length },
+    timestamp: new Date().toISOString(),
+  });
 
   const article = await generateArticle(topic, sources); // your LLM call
 
-  const executionHash = hashExecution(intentId, "generate_text",
-    { word_count: article.split(" ").length },
-    "openai-sdk", new Date().toISOString());
+  const executionHash = hashExecution({
+    intent_id: intentId,
+    action: "generate_text",
+    result: { word_count: article.split(" ").length },
+    connector: "openai-sdk",
+    timestamp: new Date().toISOString(),
+  });
 
   const receipt = generateReceipt({
-    intentHash, executionHash, intentId,
-    action: "generate_text", agentId: "agent-writer",
+    intent_hash: intentHash,
+    execution_hash: executionHash,
+    intent_id: intentId,
+    action: "generate_text",
+    agent_id: "agent-writer",
   });
 
   ledger.append({
-    intentId, action: "generate_text", agentId: "agent-writer",
-    status: "executed", detail: `Article: ${topic}`,
-    receiptHash: receipt.hash_chain.receipt_hash,
+    intent_id: intentId,
+    action: "generate_text",
+    agent_id: "agent-writer",
+    status: "executed",
+    detail: `Article: ${topic}`,
+    receipt_hash: receipt.hash_chain.receipt_hash,
   });
 
   return { article, receipt };

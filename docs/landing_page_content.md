@@ -7,29 +7,29 @@ A RIO Receipt is a tamper-evident, hash-chained record of every AI action. It pr
 ```json
 {
   "receipt_id": "82b99ccc-593f-4c27-a090-5d6e8deb72f1",
-  "timestamp": "2026-04-01T16:00:01.000Z",
-  "version": "2.2",
-  "type": "governed_action",
+  "receipt_type": "governed_action",
+  "intent_id": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
   "action": "send_email",
   "agent_id": "copilot-agent-001",
   "authorized_by": "HUMAN:cfo@example.com",
+  "timestamp": "2026-04-01T16:00:01.000Z",
   "hash_chain": {
     "intent_hash": "a3f7c8...",
-    "execution_hash": "9b2d1e...",
     "governance_hash": "4e8f2a...",
     "authorization_hash": "d1c7b3...",
-    "receipt_hash": "7f4a9c...",
-    "chain_order": [
-      "intent_hash",
-      "execution_hash",
-      "governance_hash",
-      "authorization_hash",
-      "receipt_hash"
-    ]
+    "execution_hash": "9b2d1e...",
+    "receipt_hash": "7f4a9c..."
   },
   "verification": {
     "algorithm": "SHA-256",
-    "method": "ordered_concatenation"
+    "chain_length": 5,
+    "chain_order": [
+      "intent_hash",
+      "governance_hash",
+      "authorization_hash",
+      "execution_hash",
+      "receipt_hash"
+    ]
   }
 }
 ```
@@ -37,20 +37,22 @@ A RIO Receipt is a tamper-evident, hash-chained record of every AI action. It pr
 **Explanation of Fields:**
 
 *   **`receipt_id`**: A UUID uniquely identifying this receipt.
+*   **`receipt_type`**: Either `action` (proof-layer, 3-hash) or `governed_action` (full governance, 5-hash).
+*   **`intent_id`**: The UUID of the intent this receipt covers.
 *   **`timestamp`**: The UTC timestamp when the receipt was generated.
-*   **`version`**: Protocol version (currently `2.2`).
-*   **`type`**: Either `action` (proof-layer, 3-hash) or `governed_action` (full governance, 5-hash).
 *   **`action`**: The real-world action that was taken (e.g., `send_email`, `transfer_funds`).
 *   **`agent_id`**: The AI agent that performed the action.
 *   **`authorized_by`**: (Governed receipts only) Who approved the action.
 *   **`hash_chain`**: The core proof structure:
     *   `intent_hash`: SHA-256 of the original request (what was asked for).
-    *   `execution_hash`: SHA-256 of the execution result (what actually happened).
     *   `governance_hash`: (Governed only) SHA-256 of the policy evaluation.
     *   `authorization_hash`: (Governed only) SHA-256 of the human approval decision.
+    *   `execution_hash`: SHA-256 of the execution result (what actually happened).
     *   `receipt_hash`: SHA-256 of all preceding hashes concatenated in `chain_order` — the tamper-evident seal.
+*   **`verification`**: Metadata for independent verification:
+    *   `algorithm`: MUST be SHA-256.
+    *   `chain_length`: Number of hashes in the chain (3 for proof-layer, 5 for governed).
     *   `chain_order`: The exact sequence used to compute `receipt_hash`, making verification deterministic.
-*   **`verification`**: Algorithm and method used, enabling any third party to independently verify.
 
 ### Two Receipt Types
 
@@ -63,7 +65,7 @@ intent_hash → execution_hash → receipt_hash
 **Governed Receipt (5-hash chain):** For high-risk actions requiring human approval. Adds governance evaluation and authorization to the chain.
 
 ```
-intent_hash → execution_hash → governance_hash → authorization_hash → receipt_hash
+intent_hash → governance_hash → authorization_hash → execution_hash → receipt_hash
 ```
 
 ### Five Proof-Point Cards

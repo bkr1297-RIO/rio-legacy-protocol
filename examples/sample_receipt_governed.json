@@ -1,17 +1,17 @@
 {
-  "receipt_id": "301b6516-bc32-4936-b882-69b145544977",
+  "receipt_id": "f9d6bc38-4c78-4b8d-abc7-ae67551e41e0",
   "receipt_type": "governed_action",
-  "intent_id": "e3a19336-dd82-496f-812b-e6f1636e96f2",
-  "action": "send_email",
-  "agent_id": "copilot-agent-001",
-  "authorized_by": "HUMAN:cfo@example.com",
-  "timestamp": "2026-04-02T00:58:23.955Z",
+  "intent_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "action": "execute_trade",
+  "agent_id": "trading-agent-007",
+  "authorized_by": "HUMAN:brian@rio-one.io",
+  "timestamp": "2026-04-02T04:08:58.286Z",
   "hash_chain": {
-    "intent_hash": "94a5adb909be3f1fcf3259ee8a84a8df08a6c31b5379da9320d630fe94fc1d79",
-    "governance_hash": "c97b46d2251ae55081a3abeea35dfa303e2afdd023c79213bda4e9965a9bda3a",
-    "authorization_hash": "21b62d916c3340d638997ab49cf9dc6d7e6a839889540a75232b31c41af6abb3",
-    "execution_hash": "928bd98b1e0f6896bf8b940a773924fc2e0768b321ecebe87ecc5654b7765cce",
-    "receipt_hash": "9c1e2447a745d408ab28d7cc7e56955bbaa2a026790a93b0b81aeaac50c0e120"
+    "intent_hash": "475cbd21dda01ec7790aec52dfcad038b538671bef1d56cd5c9460c0716efeb9",
+    "governance_hash": "ae65afab8c95f7fa2ee6bf7faa89871ace118081bea348eb0528ec05591cc4a3",
+    "authorization_hash": "a489e974c7e1286b59c1d7f794f8946bb2e5cac733892212103d2b2f3d3f4a9e",
+    "execution_hash": "259e3205a9eb33e537e0ca260fb0f02231e92d716d60cf4d552ede8336456b84",
+    "receipt_hash": "22c4d75db3ef389b66ccb13ecbb2c0656ad0e8abc881d7f348332fe0e8fb238e"
   },
   "verification": {
     "algorithm": "SHA-256",
