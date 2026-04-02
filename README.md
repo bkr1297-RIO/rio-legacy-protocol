@@ -1,6 +1,6 @@
 # RIO Receipt Protocol
 
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Node.js: >=18](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org/)
 [![Python: >=3.9](https://img.shields.io/badge/Python-%3E%3D3.9-3776AB.svg)](https://www.python.org/)
 [![Tests: 58 conformance](https://img.shields.io/badge/Tests-58%20conformance-brightgreen.svg)](tests/)
@@ -508,6 +508,6 @@ For security vulnerabilities, see **[SECURITY.md](SECURITY.md)**.
 
 ## License
 
-Dual-licensed under [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE). Use whichever fits your project.
+Licensed under the [Apache License, Version 2.0](LICENSE).
 
 Copyright (c) 2026 Brian K. Rasmussen, RIO System

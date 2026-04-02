@@ -7,7 +7,7 @@ name = "rio-receipt-protocol"
 version = "2.2.0"
 description = "Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails. Zero dependencies."
 readme = "README.md"
-license = {text = "MIT OR Apache-2.0"}
+license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
 authors = [
     {name = "RIO Protocol Contributors"}
@@ -20,7 +20,6 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
