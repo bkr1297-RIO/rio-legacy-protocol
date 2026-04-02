@@ -21,11 +21,9 @@ def load_receipt(file_path):
         return json.load(f)
 
 def verify_receipt_signature(receipt):
-    """Verifies the cryptographic signature of a single RIO Receipt.
-    (Placeholder for actual cryptographic verification logic)
-    """
-    # In a real implementation, this would involve ECDSA signature verification
-    # using the public key and the signed payload (intent, timestamp, etc.).
+    """Verifies the Ed25519 signature of a single RIO Receipt (legacy pre-v2.2 schema)."""
+    # Uses Ed25519 signature verification via PyNaCl.
+    # The signed payload is: id + action.type + agent_id + timestamp (legacy schema).
     required_fields = ['id', 'action', 'agent_id', 'timestamp', 'signature', 'public_key']
     if not all(field in receipt for field in required_fields):
         print("Error: Receipt missing one or more required fields for signature verification.")

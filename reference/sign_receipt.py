@@ -14,16 +14,13 @@ Or see: python/rio_receipt_protocol/receipts.py
 ══════════════════════════════════════════════════════════════════════
 
 Original description:
-Canonicalize and sign a receipt JSON using ECDSA secp256k1.
+Canonicalize and sign a receipt JSON using Ed25519 (via PyNaCl).
 
 Usage:
-    python sign_receipt.py --receipt <path/to/receipt.json> --key <path/to/private_key.pem> [--out <path/to/signed_receipt.json>]
+    python sign_receipt.py --receipt <path/to/receipt.json> --key <path/to/private_key_hex.txt> [--out <path/to/signed_receipt.json>]
 
 If --out is not specified, the signed receipt is written to stdout.
-
-Key generation (one-time setup):
-    openssl ecparam -name secp256k1 -genkey -noout -out private_key.pem
-    openssl ec -in private_key.pem -pubout -out public_key.pem
+If --key is not provided, a new Ed25519 keypair is generated automatically.
 """
 
 import argparse
@@ -74,7 +71,7 @@ def sign_bytes(data: bytes, signing_key: SigningKey) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Sign a RIO receipt JSON using ECDSA secp256k1.")
+    parser = argparse.ArgumentParser(description="Sign a RIO receipt JSON using Ed25519 (legacy pre-v2.2 schema).")
     parser.add_argument("--receipt", required=True, help="Path to the unsigned receipt JSON file.")
     parser.add_argument("--key", help="Path to an existing hex-encoded Ed25519 private key. If not provided, a new keypair will be generated.")
     parser.add_argument("--out", default=None, help="Output path for the signed receipt JSON. Defaults to stdout.")

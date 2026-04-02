@@ -1,7 +1,7 @@
 # RIO Ledger Format Specification
 
-**Version:** 1.0.0
-**Status:** Draft Standard
+**Version:** 2.2.0
+**Status:** Standard
 
 ---
 
