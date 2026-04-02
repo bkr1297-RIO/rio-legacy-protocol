@@ -48,7 +48,7 @@
     "zero-dependencies"
   ],
   "author": "RIO Protocol Contributors",
-  "license": "Apache-2.0",
+  "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bkr1297-RIO/rio-receipt-protocol"
@@ -69,7 +69,8 @@
     "tests/",
     "examples/",
     "README.md",
-    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
     "CHANGELOG.md"
   ]
 }

@@ -1,6 +1,6 @@
 # RIO Receipt Protocol
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![Node.js: >=18](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org/)
 [![Python: >=3.9](https://img.shields.io/badge/Python-%3E%3D3.9-3776AB.svg)](https://www.python.org/)
 [![Tests: 58 conformance](https://img.shields.io/badge/Tests-58%20conformance-brightgreen.svg)](tests/)
@@ -73,8 +73,10 @@ rio-receipt-protocol/
 ├── index.mjs                    # npm package entry point (unified exports)
 ├── index.d.ts                   # TypeScript type declarations
 ├── spec/                        # The protocol specification
-│   ├── receipt-schema.json      # JSON Schema for RIO Receipts (v2.2)
+│   ├── receipt-protocol.md      # Receipt Protocol Specification (v2.2)
 │   ├── ledger-format.md         # Ledger hash chain specification
+│   ├── conformance.md           # Conformance levels and test requirements
+│   ├── receipt-schema.json      # JSON Schema for RIO Receipts (v2.2)
 │   └── signing-rules.md         # Signing and verification rules
 ├── reference/                   # Reference implementation (Node.js, zero dependencies)
 │   ├── receipts.mjs             # Receipt generation and verification
@@ -88,8 +90,9 @@ rio-receipt-protocol/
 ├── cli/                         # Command-line verifier tool
 │   └── verify.mjs               # rio-verify CLI
 ├── docs/                        # Documentation
-│   ├── integration-guide.md     # OpenAI, Anthropic, LangChain integration examples
-│   └── architecture.md          # Architecture diagram and protocol positioning
+│   ├── rio-overview.md          # RIO System overview (ONE, Bondi, MANTIS, etc.)
+│   ├── architecture.md          # Architecture diagram and protocol positioning
+│   └── integration-guide.md     # OpenAI, Anthropic, LangChain integration examples
 ├── tests/                       # Node.js conformance test suite
 │   ├── conformance.test.mjs     # 29 tests across 8 categories
 │   └── legacy/                  # Pre-v2.2 tests (Ed25519 signing)
@@ -102,6 +105,8 @@ rio-receipt-protocol/
 │   ├── sample_receipt_invalid.json   # Tampered receipt (for testing)
 │   └── sample_ledger.json            # Sample ledger with hash chain
 ├── package.json                 # npm package configuration
+├── LICENSE-MIT                  # MIT License
+├── LICENSE-APACHE               # Apache License 2.0
 ├── CHANGELOG.md                 # Version history
 ├── CONTRIBUTING.md              # Contribution guidelines
 ├── CODE_OF_CONDUCT.md           # Contributor Covenant v2.1
@@ -480,11 +485,15 @@ The protocol provides the following security guarantees:
 
 The formal protocol specifications are in the `spec/` directory:
 
-- **[receipt-schema.json](spec/receipt-schema.json)** — JSON Schema defining the receipt format, required and optional fields, types, and constraints
+- **[receipt-protocol.md](spec/receipt-protocol.md)** — The Receipt Protocol Specification: purpose, scope, receipt lifecycle, field definitions, hash chain construction, verification requirements
 - **[ledger-format.md](spec/ledger-format.md)** — Ledger entry structure, hash chain rules, genesis hash, canonical field ordering
+- **[conformance.md](spec/conformance.md)** — Conformance levels (Core, Standard, Complete), test categories, test vectors
+- **[receipt-schema.json](spec/receipt-schema.json)** — JSON Schema (Draft 2020-12) for programmatic validation
 - **[signing-rules.md](spec/signing-rules.md)** — Signing algorithms, key management, verification procedures, Ed25519 requirements
 
 These documents define the protocol independent of the reference implementation. Any language or platform can implement the protocol by following these specs and passing the conformance tests.
+
+For a high-level overview of how the receipt protocol fits into the broader RIO architecture, see **[docs/rio-overview.md](docs/rio-overview.md)**.
 
 For the full RIO governance protocol specification (authorization tokens, state machines, kill switches, policy binding), see the [Internet-Draft](https://github.com/bkr1297-RIO/rio-system/blob/main/spec/draft-rio-governance-00.md) in the RIO System repository.
 
@@ -508,6 +517,6 @@ For security vulnerabilities, see **[SECURITY.md](SECURITY.md)**.
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE).
+This project is dual-licensed under [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE). You may use this protocol under the terms of either license.
 
 Copyright (c) 2026 Brian K. Rasmussen, RIO System
