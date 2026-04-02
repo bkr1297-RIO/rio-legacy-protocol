@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+private_key.txt
+temp_key.txt
