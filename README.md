@@ -508,4 +508,6 @@ For security vulnerabilities, see **[SECURITY.md](SECURITY.md)**.
 
 ## License
 
-Dual-licensed under MIT and Apache 2.0. Use whichever fits your project.
+Dual-licensed under [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE). Use whichever fits your project.
+
+Copyright (c) 2026 Brian K. Rasmussen, RIO System
