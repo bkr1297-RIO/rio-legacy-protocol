@@ -1,0 +1,3 @@
+Generated new signing key: e517e5e35bc430aee34a7272b5cf805d039f837bc5b85f0daa96bf9d91e5b326
+Generated new public key: 2001a5a70e4a58b9484dbe60470b68de21b923f7274d22d9216909d5aef2d1c1
+Signed receipt written to: /dev/null

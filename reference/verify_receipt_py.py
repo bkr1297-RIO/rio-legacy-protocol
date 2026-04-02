@@ -15,28 +15,23 @@ Exit codes:
 """
 
 import argparse
-import base64
 import hashlib
 import json
 import sys
+from nacl.signing import VerifyKey
+from nacl.exceptions import BadSignatureError
 
 
 REQUIRED_FIELDS = [
-    "receipt_id",
-    "request_id",
-    "recommendation_id",
-    "approval_id",
-    "execution_id",
-    "action_type",
-    "requested_by",
-    "approver_id",
-    "executed_by",
-    "created_at",
+    "id",
+    "action",
+    "agent_id",
+    "timestamp",
     "ledger_hash",
     "previous_hash",
     "signature",
+    "public_key",
     "verification_method",
-    "status",
 ]
 
 
@@ -45,9 +40,16 @@ def load_json(path: str) -> dict:
         return json.load(f)
 
 
-def canonicalize(receipt: dict) -> bytes:
-    """Reproduce the canonical bytes that were signed (excludes signature and ledger_hash)."""
-    excluded = {"signature", "ledger_hash"}
+def canonicalize_for_signing(receipt: dict) -> bytes:
+    """Reconstruct the payload that was signed: id + action + agent_id + timestamp."""
+    payload_str = f"{receipt["id"]}{receipt["action"]}{receipt["agent_id"]}{receipt["timestamp"]}"
+    return payload_str.encode("utf-8")
+
+def canonicalize_for_hash(receipt: dict) -> bytes:
+    """Produce a canonical, deterministic byte representation of the receipt for hashing.
+    Excludes signature, public_key, and ledger_hash.
+    """
+    excluded = {"signature", "public_key", "ledger_hash"}
     filtered = {k: v for k, v in receipt.items() if k not in excluded}
     return json.dumps(filtered, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
@@ -59,7 +61,7 @@ def check_required_fields(receipt: dict) -> list[str]:
 
 def check_ledger_hash(receipt: dict) -> tuple[bool, str]:
     """Recompute ledger_hash and compare to stored value."""
-    canonical = canonicalize(receipt)
+    canonical = canonicalize_for_hash(receipt)
     expected = hashlib.sha256(canonical).hexdigest()
     stored = receipt.get("ledger_hash", "")
     if expected == stored:
@@ -76,40 +78,24 @@ def check_chain_linkage(receipt: dict, prev_receipt: dict) -> tuple[bool, str]:
     return False, f"chain linkage BROKEN\n  receipt.previous_hash: {stored_prev}\n  prev receipt ledger_hash: {prev_hash}"
 
 
-def check_signature(receipt: dict, public_key_path: str) -> tuple[bool, str]:
-    """Verify ECDSA secp256k1 signature."""
-    try:
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import ec
-        from cryptography.exceptions import InvalidSignature
-    except ImportError:
-        return False, "ERROR: 'cryptography' package not installed. Run: pip install cryptography"
-
+def check_signature(receipt: dict) -> tuple[bool, str]:
+    """Verify Ed25519 signature."""
     method = receipt.get("verification_method", "")
-    if method != "ecdsa_secp256k1":
-        return False, f"Unsupported verification_method: '{method}'. This verifier supports 'ecdsa_secp256k1' only."
+    if method != "ed25519":
+        return False, f"Unsupported verification_method: \'{method}\'. This verifier supports \'ed25519\' only."
 
     try:
-        with open(public_key_path, "rb") as f:
-            public_key = serialization.load_pem_public_key(f.read())
-    except Exception as e:
-        return False, f"Failed to load public key: {e}"
+        signature = bytes.fromhex(receipt["signature"])
+        public_key = bytes.fromhex(receipt["public_key"])
 
-    if not isinstance(public_key, ec.EllipticCurvePublicKey):
-        return False, "Public key is not an EC key."
+        # Reconstruct the signed payload: id + action + agent_id + timestamp
+        payload = canonicalize_for_signing(receipt)
 
-    canonical = canonicalize(receipt)
-    sig_b64 = receipt.get("signature", "")
-    try:
-        sig_bytes = base64.b64decode(sig_b64)
-    except Exception as e:
-        return False, f"Failed to decode signature: {e}"
-
-    try:
-        public_key.verify(sig_bytes, canonical, ec.ECDSA(hashes.SHA256()))
+        verify_key = VerifyKey(public_key)
+        verify_key.verify(payload, signature)
         return True, "signature OK"
-    except InvalidSignature:
-        return False, "signature INVALID — receipt may have been tampered with"
+    except BadSignatureError:
+        return False, "signature INVALID \u2014 receipt may have been tampered with"
     except Exception as e:
         return False, f"signature verification error: {e}"
 
@@ -122,7 +108,10 @@ def print_result(label: str, passed: bool, detail: str):
 def main():
     parser = argparse.ArgumentParser(description="Verify a RIO receipt JSON.")
     parser.add_argument("--receipt", required=True, help="Path to the receipt JSON file to verify.")
-    parser.add_argument("--key", required=True, help="Path to the PEM-encoded secp256k1 public key.")
+    # The public key is now expected to be part of the receipt JSON itself.
+    # This argument is no longer needed for signature verification.
+    # Keeping it for now but will be removed if it causes issues or is explicitly not needed.
+    # parser.add_argument("--key", required=False, help="Path to the PEM-encoded secp256k1 public key.")
     parser.add_argument("--prev", default=None, help="Path to the previous receipt JSON (for chain linkage check).")
     args = parser.parse_args()
 
@@ -157,7 +146,7 @@ def main():
         print(f"  [SKIP] hash chain linkage: --prev not provided")
 
     # Check 4: Signature
-    sig_ok, sig_detail = check_signature(receipt, args.key)
+    sig_ok, sig_detail = check_signature(receipt)
     results.append(sig_ok)
     print_result("signature", sig_ok, sig_detail)
 

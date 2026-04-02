@@ -18,6 +18,8 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from nacl.signing import SigningKey
+from nacl.encoding import HexEncoder
 
 
 def load_receipt(path: str) -> dict:
@@ -25,16 +27,17 @@ def load_receipt(path: str) -> dict:
         return json.load(f)
 
 
-def canonicalize(receipt: dict) -> bytes:
+def canonicalize_for_signing(receipt: dict) -> bytes:
+    """Reconstruct the payload that was signed: id + action + agent_id + timestamp."""
+    payload_str = receipt["id"] + receipt["action"]["type"] + receipt["agent_id"] + receipt["timestamp"]
+    return payload_str.encode("utf-8")
+
+def canonicalize_for_hash(receipt: dict) -> bytes:
+    """Produce a canonical, deterministic byte representation of the receipt for hashing.
+    Excludes signature, public_key, and ledger_hash.
     """
-    Produce a canonical, deterministic byte representation of the receipt
-    for signing. Fields 'signature' and 'ledger_hash' are excluded from
-    the signed payload — ledger_hash is computed from this canonical form,
-    and signature is the output of signing it.
-    """
-    excluded = {"signature", "ledger_hash"}
+    excluded = {"signature", "public_key", "ledger_hash"}
     filtered = {k: v for k, v in receipt.items() if k not in excluded}
-    # RFC 8785-style: sorted keys, no extra whitespace, UTF-8
     return json.dumps(filtered, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
@@ -43,34 +46,24 @@ def compute_ledger_hash(canonical_bytes: bytes) -> str:
     return hashlib.sha256(canonical_bytes).hexdigest()
 
 
-def sign_bytes(data: bytes, private_key_path: str) -> str:
+def generate_keypair():
+    """Generates a new Ed25519 signing key and returns it along with its verify key."""
+    signing_key = SigningKey.generate()
+    return signing_key, signing_key.verify_key
+
+def sign_bytes(data: bytes, signing_key: SigningKey) -> str:
     """
-    Sign data using ECDSA secp256k1 via the cryptography library.
-    Returns a base64-encoded DER signature string.
+    Sign data using Ed25519 via PyNaCl.
+    Returns a hex-encoded signature string.
     """
-    try:
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import ec
-        import base64
-    except ImportError:
-        print("ERROR: 'cryptography' package not installed. Run: pip install cryptography", file=sys.stderr)
-        sys.exit(1)
-
-    with open(private_key_path, "rb") as f:
-        private_key = serialization.load_pem_private_key(f.read(), password=None)
-
-    if not isinstance(private_key, ec.EllipticCurvePrivateKey):
-        print("ERROR: Key is not an EC private key.", file=sys.stderr)
-        sys.exit(1)
-
-    signature_bytes = private_key.sign(data, ec.ECDSA(hashes.SHA256()))
-    return base64.b64encode(signature_bytes).decode("utf-8")
+    signed = signing_key.sign(data)
+    return signed.signature.hex()
 
 
 def main():
     parser = argparse.ArgumentParser(description="Sign a RIO receipt JSON using ECDSA secp256k1.")
     parser.add_argument("--receipt", required=True, help="Path to the unsigned receipt JSON file.")
-    parser.add_argument("--key", required=True, help="Path to the PEM-encoded secp256k1 private key.")
+    parser.add_argument("--key", help="Path to an existing hex-encoded Ed25519 private key. If not provided, a new keypair will be generated.")
     parser.add_argument("--out", default=None, help="Output path for the signed receipt JSON. Defaults to stdout.")
     args = parser.parse_args()
 
@@ -80,13 +73,28 @@ def main():
     receipt.pop("signature", None)
     receipt.pop("ledger_hash", None)
 
-    canonical = canonicalize(receipt)
-    ledger_hash = compute_ledger_hash(canonical)
-    signature = sign_bytes(canonical, args.key)
+    # Generate or load signing key
+    if args.key:
+        signing_key = SigningKey(Path(args.key).read_text().strip(), encoder=HexEncoder)
+    else:
+        signing_key, verify_key = generate_keypair()
+        print(f"Generated new signing key: {signing_key.encode(HexEncoder).decode()}", file=sys.stderr)
+        print(f"Generated new public key: {verify_key.encode(HexEncoder).decode()}", file=sys.stderr)
+
+    # Get public key from signing key
+    public_key = signing_key.verify_key.encode(HexEncoder).decode()
+
+    # Prepare payload for signing
+    payload_to_sign = canonicalize_for_signing(receipt)
+    signature = sign_bytes(payload_to_sign, signing_key)
+
+    # Compute ledger hash for the receipt content (excluding signature and public_key)
+    ledger_hash = compute_ledger_hash(canonicalize_for_hash(receipt))
 
     receipt["ledger_hash"] = ledger_hash
     receipt["signature"] = signature
-    receipt["verification_method"] = "ecdsa_secp256k1"
+    receipt["public_key"] = public_key
+    receipt["verification_method"] = "ed25519"
 
     signed_json = json.dumps(receipt, indent=2, ensure_ascii=False)
 

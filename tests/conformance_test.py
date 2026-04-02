@@ -1,6 +1,9 @@
 import sys
 import os
 import json
+from nacl.signing import SigningKey, VerifyKey
+from nacl.encoding import HexEncoder
+from pathlib import Path
 
 # Add the parent directory to the sys.path to import verifier.py
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'reference')))
@@ -23,19 +26,55 @@ def run_test(test_name, func, *args, expected_result=True):
 if __name__ == '__main__':
     print("\n===== RIO Receipt Protocol Conformance Tests =====")
 
-    # Test 1: Valid receipt signature verification (placeholder)
+    # --- Setup for Signature Tests ---
+    # Generate a keypair for testing
+    signing_key = SigningKey.generate()
+    public_key_hex = signing_key.verify_key.encode(HexEncoder).decode()
+    private_key_hex = signing_key.encode(HexEncoder).decode()
+
+    # Load a base receipt for signing
+    base_receipt = verifier.load_receipt(VALID_RECEIPT_PATH)
+
+    # Create a valid signed receipt
+    valid_signed_receipt = dict(base_receipt) # Create a copy
+    valid_signed_receipt.pop("signature", None)
+    valid_signed_receipt.pop("public_key", None)
+    valid_signed_receipt.pop("ledger_hash", None)
+
+    # Reconstruct the signed payload: id + action + agent_id + timestamp
+    payload_str = valid_signed_receipt["id"] + valid_signed_receipt["action"]["type"] + valid_signed_receipt["agent_id"] + valid_signed_receipt["timestamp"]
+    payload_to_sign = payload_str.encode("utf-8")
+
+    signature = signing_key.sign(payload_to_sign).signature.hex()
+
+    valid_signed_receipt["signature"] = signature
+    valid_signed_receipt["public_key"] = public_key_hex
+    valid_signed_receipt["verification_method"] = "ed25519"
+    valid_signed_receipt["ledger_hash"] = verifier.calculate_hash(valid_signed_receipt)
+
+    temp_valid_signed_receipt_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'examples', 'temp_valid_signed_receipt.json'))
+    with open(temp_valid_signed_receipt_path, 'w') as f:
+        json.dump(valid_signed_receipt, f, indent=4)
+
+    # Create an invalid signed receipt (tamper with signature)
+    invalid_signed_receipt = dict(valid_signed_receipt)
+    invalid_signed_receipt["signature"] = "a" * len(invalid_signed_receipt["signature"]) # Tamper with signature
+
+    temp_invalid_signed_receipt_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'examples', 'temp_invalid_signed_receipt.json'))
+    with open(temp_invalid_signed_receipt_path, 'w') as f:
+        json.dump(invalid_signed_receipt, f, indent=4)
+
+    # Test 1: Valid receipt signature verification
     run_test(
-        "Valid Receipt Signature (Placeholder)",
-        verifier.verify_rio_receipt,
-        VALID_RECEIPT_PATH,
+        "Valid Receipt Signature",
+        lambda: verifier.verify_receipt_signature(verifier.load_receipt(temp_valid_signed_receipt_path)),
         expected_result=True
     )
 
-    # Test 2: Invalid receipt signature verification (placeholder)
+    # Test 2: Invalid receipt signature verification
     run_test(
-        "Invalid Receipt Signature (Placeholder)",
-        verifier.verify_rio_receipt,
-        INVALID_RECEIPT_PATH,
+        "Invalid Receipt Signature",
+        lambda: verifier.verify_receipt_signature(verifier.load_receipt(temp_invalid_signed_receipt_path)),
         expected_result=False
     )
 
@@ -111,4 +150,6 @@ if __name__ == '__main__':
     # Clean up temporary files
     os.remove(temp_ledger_path)
     os.remove(temp_broken_ledger_path)
+    os.remove(temp_valid_signed_receipt_path)
+    os.remove(temp_invalid_signed_receipt_path)
     print("\n===== Conformance Tests Complete =====")

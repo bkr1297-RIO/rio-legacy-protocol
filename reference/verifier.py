@@ -1,5 +1,7 @@
 import json
 import hashlib
+from nacl.signing import VerifyKey
+from nacl.exceptions import BadSignatureError
 
 def load_receipt(file_path):
     """Loads a RIO Receipt from a JSON file."""
@@ -12,21 +14,42 @@ def verify_receipt_signature(receipt):
     """
     # In a real implementation, this would involve ECDSA signature verification
     # using the public key and the signed payload (intent, timestamp, etc.).
-    # For now, we'll assume a valid structure and return True.
-    if 'signature' not in receipt or 'payload' not in receipt:
-        print("Error: Receipt missing signature or payload.")
+    required_fields = ['id', 'action', 'agent_id', 'timestamp', 'signature', 'public_key']
+    if not all(field in receipt for field in required_fields):
+        print("Error: Receipt missing one or more required fields for signature verification.")
         return False
-    # Placeholder for actual signature verification
-    print(f"[INFO] Placeholder: Verifying signature for receipt ID: {receipt.get('id', 'N/A')}")
-    if receipt.get('signature') == 'invalid_signature_placeholder':
+
+    try:
+        signature = bytes.fromhex(receipt['signature'])
+        public_key = bytes.fromhex(receipt['public_key'])
+
+        # Reconstruct the signed payload: receipt_id + action + agent_id + timestamp
+        payload_str = receipt["id"] + receipt["action"]["type"] + receipt["agent_id"] + receipt["timestamp"]
+        payload = payload_str.encode('utf-8')
+
+        verify_key = VerifyKey(public_key)
+        verify_key.verify(payload, signature)
+        return True
+    except BadSignatureError:
+        print(f"Signature verification FAILED for receipt ID: {receipt.get('id', 'N/A')}")
         return False
-    return True
+    except Exception as e:
+        print(f"An error occurred during signature verification: {e}")
+    return False
+
+def canonicalize_for_hash(receipt: dict) -> bytes:
+    """Produce a canonical, deterministic byte representation of the receipt for hashing.
+    Excludes signature, public_key, and ledger_hash.
+    """
+    excluded = {"signature", "public_key", "ledger_hash"}
+    filtered = {k: v for k, v in receipt.items() if k not in excluded}
+    return json.dumps(filtered, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 def calculate_hash(data):
     """Calculates the SHA-256 hash of a JSON object."""
     # Ensure consistent JSON serialization for hashing
-    serialized_data = json.dumps(data, sort_keys=True, separators=(',', ':'))
-    return hashlib.sha256(serialized_data.encode('utf-8')).hexdigest()
+    canonical = canonicalize_for_hash(data)
+    return hashlib.sha256(canonical).hexdigest()
 
 def verify_hash_chain(ledger_entries):
     """Verifies the SHA-256 hash chain of a list of ledger entries.

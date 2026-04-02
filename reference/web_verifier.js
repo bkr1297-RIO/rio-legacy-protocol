@@ -11,20 +11,76 @@
  * @param {object} receipt - The RIO Receipt object.
  * @returns {boolean} - True if the signature is considered valid (or passes placeholder check), false otherwise.
  */
-function verifyReceiptSignature(receipt) {
-    if (!receipt || !receipt.signature || !receipt.payload) {
-        console.error("Error: Receipt missing signature or payload.");
+/**
+ * Reconstructs the payload that was signed: id + action + agent_id + timestamp.
+ * @param {object} receipt - The RIO Receipt object.
+ * @returns {Uint8Array} - The payload as a Uint8Array.
+ */
+function canonicalizeForSigning(receipt) {
+    const payloadStr = `${receipt.id}${receipt.action.type}${receipt.agent_id}${receipt.timestamp}`;
+    return new TextEncoder().encode(payloadStr);
+}
+
+/**
+ * Verifies the cryptographic signature of a single RIO Receipt using Ed25519 and Web Crypto API.
+ * @param {object} receipt - The RIO Receipt object.
+ * @returns {Promise<boolean>} - A promise that resolves with true if the signature is valid, false otherwise.
+ */
+async function verifyReceiptSignature(receipt) {
+    const requiredFields = ['id', 'action', 'agent_id', 'timestamp', 'signature', 'public_key', 'verification_method'];
+    if (!requiredFields.every(field => field in receipt)) {
+        console.error("Error: Receipt missing one or more required fields for signature verification.");
         return false;
     }
-    // In a real implementation, this would involve ECDSA signature verification
-    // using the public key and the signed payload (intent, timestamp, etc.).
-    // For now, we'll assume a valid structure and return true.
-    console.log(`[INFO] Placeholder: Verifying signature for receipt ID: ${receipt.id || 'N/A'}`);
-    // Simulate invalid signature detection for testing purposes
-    if (receipt.signature === 'invalid_signature_placeholder') {
+
+    if (receipt.verification_method !== 'ed25519') {
+        console.error(`Unsupported verification_method: ${receipt.verification_method}. This verifier supports 'ed25519' only.`);
         return false;
     }
-    return true;
+
+    try {
+        const signature = hexToUint8Array(receipt.signature);
+        const publicKey = hexToUint8Array(receipt.public_key);
+
+        const algorithm = { name: 'Ed25519' };
+        const key = await crypto.subtle.importKey(
+            'raw',
+            publicKey,
+            algorithm,
+            true,
+            ['verify']
+        );
+
+        const payload = canonicalizeForSigning(receipt);
+
+        const isValid = await crypto.subtle.verify(
+            algorithm,
+            key,
+            signature,
+            payload
+        );
+
+        if (!isValid) {
+            console.error(`Signature verification FAILED for receipt ID: ${receipt.id}`);
+        }
+        return isValid;
+    } catch (e) {
+        console.error(`An error occurred during signature verification: ${e}`);
+        return false;
+    }
+}
+
+/**
+ * Converts a hexadecimal string to a Uint8Array.
+ * @param {string} hexString - The hexadecimal string.
+ * @returns {Uint8Array} - The converted Uint8Array.
+ */
+function hexToUint8Array(hexString) {
+    const matches = hexString.match(/.{1,2}/g);
+    if (!matches) {
+        throw new Error('Invalid hex string');
+    }
+    return new Uint8Array(matches.map(byte => parseInt(byte, 16)));
 }
 
 /**
@@ -92,8 +148,8 @@ async function verifyHashChain(ledgerEntries) {
 async function verifyRioReceipt(receipt, ledgerEntries = null) {
     console.log(`\n--- Verifying Receipt: ${receipt.id || 'N/A'} ---`);
 
-    // 1. Verify individual receipt signature (placeholder)
-    if (!verifyReceiptSignature(receipt)) {
+    // 1. Verify individual receipt signature
+    if (!(await verifyReceiptSignature(receipt))) {
         console.error("Receipt signature verification FAILED.");
         return false;
     }
