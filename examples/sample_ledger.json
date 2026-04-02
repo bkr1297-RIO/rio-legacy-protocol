@@ -1,38 +1,30 @@
 [
   {
-    "entry_id": "a84f2429-51ee-4e91-abe6-0461d175d1da",
+    "entry_id": "e31fb24a-95d3-4cbc-bbc6-0bf3097f4bb5",
     "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-    "ledger_hash": "01edb17724e3b956e8aebfcd6424859eac627be1085580c6ecb5ff18403f9cdd",
-    "timestamp": "2026-04-02T01:24:33.807Z",
-    "action": "send_email",
+    "ledger_hash": "a90eaf23592dea58dcdad1a455baf0ebe55219989e12658987fd799dcd69acc4",
+    "timestamp": "2026-04-02T04:08:58.287Z",
+    "intent_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "action": "data_query",
+    "agent_id": "demo-agent-001",
     "status": "executed",
-    "detail": "Email sent to user@example.com",
-    "receipt_hash": null,
+    "detail": "Data query: Monthly active user report",
+    "receipt_hash": "17686ebf0a94c47899b92290020b3e0f28f451a9f7ef540acd2b17818364784e",
     "authorization_hash": null,
-    "intent_hash": null
+    "intent_hash": "f43002e2e919979437c04cf6fd0c19fa12443459f5b44c4c2a4472f7a69714cc"
   },
   {
-    "entry_id": "c476abc9-9e09-4f2b-91cf-c90e8548e5ac",
-    "prev_hash": "01edb17724e3b956e8aebfcd6424859eac627be1085580c6ecb5ff18403f9cdd",
-    "ledger_hash": "5f9f118b5bbaa1a33b42f8cdc3db1cbd80b3d1061877d7b7060f0d4f70a76b4c",
-    "timestamp": "2026-04-02T01:24:33.807Z",
-    "action": "transfer_funds",
+    "entry_id": "8f7c3d0d-6a00-49a8-85af-33006152a36e",
+    "prev_hash": "a90eaf23592dea58dcdad1a455baf0ebe55219989e12658987fd799dcd69acc4",
+    "ledger_hash": "7960fa6bef68f9f5ceef900ad6973aeb276b7d40f4e0cdd43ef8eaa190bc374f",
+    "timestamp": "2026-04-02T04:08:58.287Z",
+    "intent_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "action": "execute_trade",
+    "agent_id": "trading-agent-007",
     "status": "executed",
-    "detail": "Funds transfer $5,000 to ACCT-9876 (governed, human-approved)",
-    "receipt_hash": null,
-    "authorization_hash": null,
-    "intent_hash": null
-  },
-  {
-    "entry_id": "784b8489-3072-4033-b2cf-06d2cf5665b6",
-    "prev_hash": "5f9f118b5bbaa1a33b42f8cdc3db1cbd80b3d1061877d7b7060f0d4f70a76b4c",
-    "ledger_hash": "c88b8454dfc5f25167e39cdea6e4f6512e1872fc81a0b96f1d58ca4b2c2589d3",
-    "timestamp": "2026-04-02T01:24:33.807Z",
-    "action": "schedule_meeting",
-    "status": "executed",
-    "detail": "Meeting 'Q2 Review' scheduled for 2026-04-03",
-    "receipt_hash": null,
-    "authorization_hash": null,
-    "intent_hash": null
+    "detail": "Governed trade: AAPL buy 1000 shares",
+    "receipt_hash": "22c4d75db3ef389b66ccb13ecbb2c0656ad0e8abc881d7f348332fe0e8fb238e",
+    "authorization_hash": "a489e974c7e1286b59c1d7f794f8946bb2e5cac733892212103d2b2f3d3f4a9e",
+    "intent_hash": "475cbd21dda01ec7790aec52dfcad038b538671bef1d56cd5c9460c0716efeb9"
   }
 ]

@@ -1,17 +1,17 @@
 {
-  "receipt_id": "82b99ccc-593f-4c27-a090-5d6e8deb72f1",
+  "receipt_id": "7bf12c76-d18a-425d-a0ab-00d965ce3c23",
   "receipt_type": "action",
-  "intent_id": "e3a19336-dd82-496f-812b-e6f1636e96f2",
-  "action": "send_email",
-  "agent_id": "copilot-agent-001",
+  "intent_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "action": "data_query",
+  "agent_id": "demo-agent-001",
   "authorized_by": null,
-  "timestamp": "2026-04-02T00:58:23.946Z",
+  "timestamp": "2026-04-02T04:08:58.282Z",
   "hash_chain": {
-    "intent_hash": "94a5adb909be3f1fcf3259ee8a84a8df08a6c31b5379da9320d630fe94fc1d79",
+    "intent_hash": "f43002e2e919979437c04cf6fd0c19fa12443459f5b44c4c2a4472f7a69714cc",
     "governance_hash": null,
     "authorization_hash": null,
-    "execution_hash": "928bd98b1e0f6896bf8b940a773924fc2e0768b321ecebe87ecc5654b7765cce",
-    "receipt_hash": "5bda308e873bead2ffcacb4678be11f647b5311c4239891048aa5255c19deb7e"
+    "execution_hash": "062694b497f8049b7520d9eceaea7cf1a816ef4921432c0435ae7347ebc0b80d",
+    "receipt_hash": "17686ebf0a94c47899b92290020b3e0f28f451a9f7ef540acd2b17818364784e"
   },
   "verification": {
     "algorithm": "SHA-256",
