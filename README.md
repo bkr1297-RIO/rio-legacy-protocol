@@ -416,6 +416,8 @@ This protocol is the **open proof layer**. The [RIO System](https://github.com/b
 
 You can use the receipt protocol without the gateway. You can use the gateway without ONE. Each layer is independently useful.
 
+The full RIO authorization and commit protocol is specified in the [RIO Governance Protocol Internet-Draft](https://github.com/bkr1297-RIO/rio-system/blob/main/spec/draft-rio-governance-00.md), covering token models, state machines, kill switch semantics, and policy binding. The receipt protocol defined in this repo is the open proof layer that the governance protocol builds on.
+
 In simple terms:
 - **Receipts prove** (open — this repo)
 - **Ledger remembers** (open — this repo)
@@ -423,6 +425,8 @@ In simple terms:
 - Governance decides (commercial)
 - Humans approve when required (commercial)
 - Connectors execute (commercial)
+
+**For platform builders and enterprise teams:** If you are building governance, compliance, or agent orchestration infrastructure and want to integrate or build on the RIO protocol, contact us at riomethod5@gmail.com.
 
 ---
 
@@ -451,6 +455,8 @@ The formal protocol specifications are in the `spec/` directory:
 - **[signing-rules.md](spec/signing-rules.md)** — Signing algorithms, key management, verification procedures, Ed25519 requirements
 
 These documents define the protocol independent of the reference implementation. Any language or platform can implement the protocol by following these specs and passing the conformance tests.
+
+For the full RIO governance protocol specification (authorization tokens, state machines, kill switches, policy binding), see the [Internet-Draft](https://github.com/bkr1297-RIO/rio-system/blob/main/spec/draft-rio-governance-00.md) in the RIO System repository.
 
 ---
 
