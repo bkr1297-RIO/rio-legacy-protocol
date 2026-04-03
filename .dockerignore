@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Python package (separate distribution)
+python/
+*.pyc
+__pycache__/
+
+# Git
+.git/
+.github/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Environment and data
+.env
+data/
+*.log
+
+# Documentation (not needed in container)
+docs/
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md
+
+# Demo output
+demo-output/

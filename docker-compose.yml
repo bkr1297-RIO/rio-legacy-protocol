@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  rio-api:
+    build: .
+    container_name: rio-receipt-protocol
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LEDGER_FILE=/app/data/ledger.json
+      - ED25519_PRIVATE_KEY_HEX=${ED25519_PRIVATE_KEY_HEX:-}
+      - ED25519_PUBLIC_KEY_HEX=${ED25519_PUBLIC_KEY_HEX:-}
+    volumes:
+      - rio-ledger:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  rio-ledger:
+    driver: local
