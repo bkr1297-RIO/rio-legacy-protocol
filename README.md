@@ -1,112 +1,14 @@
 # RIO Receipt Protocol
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20%2F%20Apache--2.0-blue.svg)](https://github.com/bkr1297-RIO/rio-receipt-protocol/blob/main/LICENSE)
-[![Node.js: >=18](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org/)
-[![Python: >=3.9](https://img.shields.io/badge/Python-%3E%3D3.9-3776AB.svg)](https://www.python.org/)
+[![npm: rio-receipt-protocol](https://img.shields.io/npm/v/rio-receipt-protocol.svg)](https://www.npmjs.com/package/rio-receipt-protocol)
+[![PyPI: rio-receipt-protocol](https://img.shields.io/pypi/v/rio-receipt-protocol.svg)](https://pypi.org/project/rio-receipt-protocol/)
 [![Tests: 58 conformance](https://img.shields.io/badge/Tests-58%20conformance%20(29%20Node%20%2B%2029%20Python)-brightgreen.svg)](tests/conformance.test.mjs)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-zero-orange.svg)](#)
 
 **Cryptographic proof for AI actions. Open standard. Zero dependencies.**
 
----
-
-## What Is a RIO Receipt?
-
-A RIO Receipt is a cryptographic record of an AI action, written to a tamper-evident ledger. It allows an organization to later prove exactly what an AI system did, when it did it, which system was responsible, and that the record has not been altered.
-
-The RIO Receipt Protocol acts as a **"Layer 3" proof layer** that sits beneath application logic, turning AI-assisted decisions and actions into verifiable, auditable records.
-
-**A standard RIO Receipt proves:**
-
-- What action was taken
-- Which AI or system initiated it
-- When it happened
-- What the result was
-- That the record has not been altered
-
-When a governance layer is present (such as the full RIO platform), receipts can also prove whether a human approved the action and under what policy. But **the core protocol does not require governance or human approval** — it works as standalone proof infrastructure for any AI system.
-
-Any AI system — whether built on OpenAI, Anthropic, Google, Cohere, open-source models, or custom agents — can implement RIO Receipts to produce a verifiable audit trail.
-
----
-
-## How It Works
-
-### Core Proof Layer (Open Standard)
-
-```
-Intent → Execution → Receipt → Ledger
-  ↓          ↓           ↓         ↓
-SHA-256   SHA-256     SHA-256   Hash Chain
-```
-
-An AI system proposes an action (intent). The action executes. A receipt is generated binding the intent hash and execution hash together. The receipt is written to a tamper-evident ledger. **Three hashes, one chain, complete proof.**
-
-### With Governance Extension (Optional)
-
-```
-Intent → Governance → Authorization → Execution → Receipt → Ledger
-  ↓          ↓             ↓              ↓           ↓         ↓
-SHA-256   SHA-256       SHA-256        SHA-256     SHA-256   Hash Chain
-```
-
-Systems that implement human approval workflows can add governance and authorization hashes. The receipt expands from a 3-hash chain to a 5-hash chain. Both types coexist in the same ledger.
-
-This is not a framework. It is not a product. It is a **protocol** — a set of rules for how receipts are structured, hashed, chained, and verified. Any system can implement it.
-
----
-
-## Why This Exists
-
-AI systems are making real decisions — sending emails, moving money, modifying records, scheduling meetings, writing code. Today, there is no standard way to prove any of it happened the way it was supposed to.
-
-Prompt-level guardrails are bypassable. Policy documents are advisory. Audit logs can be incomplete or fabricated after the fact. Without a proof layer that is architecturally separate from the AI itself, every deployed agent is a liability.
-
-The RIO Receipt Protocol gives every AI action a cryptographic receipt — a hash-chained proof that the action occurred as recorded. The receipt is written to a tamper-evident ledger where any modification, deletion, insertion, or reordering is immediately detectable.
-
----
-
-## What Is in This Repo
-
-```
-rio-receipt-protocol/
-├── index.mjs                    # npm package entry point (unified exports)
-├── index.d.ts                   # TypeScript type declarations
-├── spec/                        # The protocol specification
-│   ├── receipt-schema.json      # JSON Schema for RIO Receipts (v2.2)
-│   ├── ledger-format.md         # Ledger hash chain specification
-│   └── signing-rules.md         # Signing and verification rules
-├── reference/                   # Reference implementation (Node.js, zero dependencies)
-│   ├── receipts.mjs             # Receipt generation and verification
-│   ├── ledger.mjs               # Tamper-evident ledger (in-memory + JSON file)
-│   ├── verifier.mjs             # Standalone verification (receipts, chains, cross-checks)
-│   └── web_verifier.js          # Browser-compatible verifier (Web Crypto API)
-├── python/                      # Python package (pip install rio-receipt-protocol)
-│   ├── rio_receipt_protocol/    # Python module (zero required dependencies)
-│   ├── tests/                   # Python conformance tests (29 tests)
-│   └── pyproject.toml           # PyPI packaging configuration
-├── cli/                         # Command-line verifier tool
-│   └── verify.mjs               # rio-verify CLI
-├── docs/                        # Documentation
-│   ├── integration-guide.md     # OpenAI, Anthropic, LangChain integration examples
-│   └── architecture.md          # Architecture diagram and protocol positioning
-├── tests/                       # Node.js conformance test suite
-│   ├── conformance.test.mjs     # 29 tests across 8 categories
-│   └── legacy/                  # Pre-v2.2 tests (Ed25519 signing)
-├── examples/                    # Usage examples
-│   ├── basic-usage.mjs          # Complete flow: intent → receipt → ledger → verify
-│   ├── sample_receipt_valid.json    # Valid proof-layer receipt
-│   ├── sample_receipt_governed.json # Valid governed receipt (5-hash)
-│   ├── sample_receipt_invalid.json  # Tampered receipt (for testing)
-│   └── sample_ledger.json           # Sample ledger with hash chain
-├── package.json                 # npm package configuration
-├── CHANGELOG.md                 # Version history
-├── CONTRIBUTING.md              # Contribution guidelines
-├── CODE_OF_CONDUCT.md           # Contributor Covenant v2.1
-└── SECURITY.md                  # Security policy and vulnerability reporting
-```
-
-Both the Node.js and Python implementations have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library. The spec documents define the protocol independent of any implementation language.
+Your AI does something. This protocol proves it happened, what was requested, what executed, and that the record hasn't been changed. It wraps around your existing system — you don't replace anything, you add a proof layer.
 
 ---
 
@@ -115,30 +17,27 @@ Both the Node.js and Python implementations have **zero required dependencies**.
 ### Install
 
 ```bash
-# Node.js — install from GitHub
-npm install github:bkr1297-RIO/rio-receipt-protocol
+# Node.js
+npm install rio-receipt-protocol
 
-# Python — install from GitHub
-pip install git+https://github.com/bkr1297-RIO/rio-receipt-protocol.git#subdirectory=python
+# Python
+pip install rio-receipt-protocol
+
+# Docker (REST API — no install required)
+docker run -p 3000:3000 ghcr.io/bkr1297-rio/rio-receipt-protocol
 ```
 
 Or clone and use locally:
 
 ```bash
-# Node.js — clone and import directly
 git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
-# import { generateReceipt, verifyReceipt } from "./rio-receipt-protocol/index.mjs"
-
-# Python — editable install from source
-git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
-cd rio-receipt-protocol/python && pip install -e .
+cd rio-receipt-protocol
+node examples/basic-usage.mjs
 ```
 
-> **Note:** npm and PyPI registry packages are planned. Until then, the GitHub install methods above are the primary distribution path.
+Both packages have **zero required dependencies**. Node.js uses only `node:crypto` and `node:fs`. Python uses only the standard library.
 
-Both packages have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library.
-
-### Node.js — Hello World
+### Generate Your First Receipt (Node.js)
 
 ```javascript
 import {
@@ -185,7 +84,7 @@ ledger.append({
 console.log(ledger.verifyChain().valid); // true
 ```
 
-### Python — Hello World
+### Generate Your First Receipt (Python)
 
 ```python
 from rio_receipt_protocol import (
@@ -226,36 +125,74 @@ assert ledger.verify_chain()["valid"]
 
 Three hashes, one receipt, one ledger entry. Your AI system now produces verifiable proof of every action.
 
-### Run From Source
+---
 
-```bash
-git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
-cd rio-receipt-protocol
+## The Mental Model
 
-# Run the example
-node examples/basic-usage.mjs
+Every receipt follows the same four-step pattern:
 
-# Run conformance tests (Node.js — 29 tests)
-node tests/conformance.test.mjs
-
-# Run conformance tests (Python — 29 tests)
-cd python && PYTHONPATH=. python3 tests/test_conformance.py
-
-# Verify a live gateway
-node cli/verify.mjs remote https://rio-gateway.onrender.com
+```
+1. Hash the intent       →  What was requested?
+2. Hash the execution    →  What actually happened?
+3. Generate the receipt  →  Bind them together (SHA-256)
+4. Append to the ledger  →  Tamper-evident chain
 ```
 
-### Framework Integration
+```
+Intent → Execution → Receipt → Ledger
+  ↓          ↓           ↓         ↓
+SHA-256   SHA-256     SHA-256   Hash Chain
+```
 
-See the **[Integration Guide](docs/integration-guide.md)** for complete examples with:
+That's it. Wrap any AI call, API action, or automated operation with these four steps and you have cryptographic proof of what happened. The receipt is independently verifiable by anyone — auditors, regulators, customers — without access to your system.
 
-- **OpenAI** (Node.js + Python)
-- **Anthropic Claude** (Node.js + Python)
-- **LangChain** (callback handler for automatic receipt generation)
-- **Multi-agent systems** (shared ledger across agents)
-- **Governed receipts** (human-in-the-loop 5-hash chains)
+---
 
-### Quick Integration (20 Lines)
+## Real-World Examples
+
+The `examples/` directory contains complete, runnable demos for common AI actions:
+
+| Example | What It Proves | Run It |
+|---------|---------------|--------|
+| **Email send** | AI sent an email, receipt proves sender, recipient, content hash | `node examples/send_email_demo.mjs` |
+| **File delete** | AI deleted a file, receipt proves which file, when, by whom | `node examples/file_delete_demo.mjs` |
+| **API call** | AI called an external API, receipt proves endpoint, payload, response | `node examples/api_call_demo.mjs` |
+| **Money transfer** | AI moved funds, receipt proves amount, accounts, authorization | `node examples/money_transfer_demo.mjs` |
+| **Database persistence** | Receipts stored in a database with query and retrieval | `node examples/database_persistence_demo.mjs` |
+| **Key rotation** | Rotate signing keys while maintaining ledger continuity | `node examples/key_rotation_demo.mjs` |
+| **Basic flow** | Minimal intent → receipt → ledger → verify | `node examples/basic-usage.mjs` |
+| **End-to-end (Node.js)** | Full governed flow with signing and verification | `node examples/end-to-end.mjs` |
+| **End-to-end (Python)** | Full governed flow in Python | `python examples/end-to-end.py` |
+
+Each demo generates real receipts and ledger entries that you can inspect and verify with the CLI:
+
+```bash
+node cli/verify.mjs receipt ./demo-output/receipt.json
+node cli/verify.mjs chain ./demo-output/ledger.json
+```
+
+---
+
+## Where It Fits
+
+The RIO Receipt Protocol is a **proof layer** that sits between your application and your storage. It does not replace anything in your stack — it wraps around your existing AI calls and API actions to produce verifiable receipts.
+
+```
+┌─────────────────────────────────────────────┐
+│   Your Application / AI Agent               │  ← Your code (unchanged)
+│   (OpenAI, Anthropic, LangChain, custom)    │
+├─────────────────────────────────────────────┤
+│   RIO Receipt Protocol                      │  ← Add this layer (4 function calls)
+│   hashIntent → hashExecution → receipt →    │
+│   ledger.append                             │
+├─────────────────────────────────────────────┤
+│   Your Storage / Database                   │  ← Your infrastructure (unchanged)
+└─────────────────────────────────────────────┘
+```
+
+You keep your AI provider, your framework, your database, your deployment. The protocol adds four function calls to produce a cryptographic receipt for each action. That's the integration.
+
+### Integration Template
 
 Copy this template to add receipts to any action in your system:
 
@@ -286,31 +223,33 @@ async function executeWithReceipt(action, agentId, parameters, doAction) {
 
 > **Key order matters.** When constructing objects for hashing, keys must be in the exact order shown. Different key orders produce different hashes. See [Canonical Rules](spec/canonical-rules.md) for details.
 
----
+### Framework Integration
 
-## RIO Governance & Execution Loop
+See the **[Integration Guide](docs/integration-guide.md)** for complete examples with:
 
-**Every action follows this exact 9-step flow:**
-
-```mermaid
-flowchart TD
-    A[1. User requests action] --> B[2. AI proposes action]
-    B --> C[3. RIO evaluates risk + policy]
-    C --> D{4. Human approval required\nif HIGH risk}
-    D --> E[5. Approval authorizes execution\ntime-bounded]
-    E --> F[6. Executor performs action]
-    F --> G[7. Result recorded in receipt]
-    G --> H[8. Receipt generated & signed]
-    H --> I[9. Ledger updated\ntamper-evident]
-```
-
-LOW-risk actions skip step 4 (auto-approved). HIGH-risk actions always require step 4 (explicit cryptographic approval).
-
-**Result: Every action is provable. No Receipt = Did Not Happen.**
+- **OpenAI** (Node.js + Python)
+- **Anthropic Claude** (Node.js + Python)
+- **LangChain** (callback handler for automatic receipt generation)
+- **Multi-agent systems** (shared ledger across agents)
+- **Governed receipts** (human-in-the-loop 5-hash chains)
 
 ---
 
-## The Receipt
+## What Is a RIO Receipt?
+
+A RIO Receipt is a cryptographic record of an AI action, written to a tamper-evident ledger. It allows an organization to later prove exactly what an AI system did, when it did it, which system was responsible, and that the record has not been altered.
+
+**A standard RIO Receipt proves:**
+
+- What action was taken
+- Which AI or system initiated it
+- When it happened
+- What the result was
+- That the record has not been altered
+
+When a governance layer is present (such as the full RIO platform), receipts can also prove whether a human approved the action and under what policy. But **the core protocol does not require governance or human approval** — it works as standalone proof infrastructure for any AI system.
+
+Any AI system — whether built on OpenAI, Anthropic, Google, Cohere, open-source models, or custom agents — can implement RIO Receipts to produce a verifiable audit trail.
 
 ### Proof-Layer Receipt (Core)
 
@@ -344,7 +283,12 @@ The `receipt_hash` is computed from the `receipt_id`, the intent and execution h
 
 ### Governed Receipt (Extension)
 
-When governance and human approval are present, the receipt expands:
+When governance and human approval are present, the receipt expands from a 3-hash chain to a 5-hash chain:
+
+```
+Core:     intent_hash → execution_hash → receipt_hash                              (3 hashes)
+Governed: intent_hash → governance_hash → authorization_hash → execution_hash → receipt_hash  (5 hashes)
+```
 
 ```json
 {
@@ -448,25 +392,6 @@ All verification is performed locally using SHA-256. No data is sent to any exte
 
 ---
 
-## Conformance
-
-The conformance test suite (`tests/conformance.test.mjs`) validates 8 categories:
-
-| Suite | Tests | What It Proves |
-|-------|-------|----------------|
-| Proof-Layer Receipts | 5 | Core 3-hash receipts generate and verify correctly |
-| Governed Receipts | 4 | Extended 5-hash receipts with governance/authorization |
-| Hash Integrity | 5 | SHA-256 produces correct, deterministic output; tampering detected |
-| Ledger Operations | 5 | Genesis linkage, multi-entry chains, standalone verifier agreement |
-| Cross-Verification | 2 | Receipt-to-ledger matching and mismatch detection |
-| Batch Verification | 2 | Multi-receipt verification with tamper detection |
-| Mixed Receipt Types | 2 | Proof-layer and governed receipts coexist in one ledger |
-| Optional Extensions | 3 | Ingestion provenance, identity binding, backward compatibility |
-
-Any implementation of the RIO Receipt Protocol can run these tests to prove conformance. The test suite is the contract.
-
----
-
 ## Who This Is For
 
 **Any team deploying AI agents** that needs to prove what their AI systems did. The proof layer works regardless of which AI provider, framework, or orchestration system you use.
@@ -488,6 +413,67 @@ Any implementation of the RIO Receipt Protocol can run these tests to prove conf
 - **Customer-facing proof** — Show your customers verifiable proof of what your AI did on their behalf.
 - **Multi-agent accountability** — When multiple AI agents collaborate, each action gets its own receipt. The ledger shows who did what.
 - **Governance layer** (with extension) — Add human approval workflows on top of the proof layer. The full RIO platform does this.
+
+---
+
+## Why This Exists
+
+AI systems are making real decisions — sending emails, moving money, modifying records, scheduling meetings, writing code. Today, there is no standard way to prove any of it happened the way it was supposed to.
+
+Prompt-level guardrails are bypassable. Policy documents are advisory. Audit logs can be incomplete or fabricated after the fact. Without a proof layer that is architecturally separate from the AI itself, every deployed agent is a liability.
+
+The RIO Receipt Protocol gives every AI action a cryptographic receipt — a hash-chained proof that the action occurred as recorded. The receipt is written to a tamper-evident ledger where any modification, deletion, insertion, or reordering is immediately detectable.
+
+This is not a framework. It is not a product. It is a **protocol** — a set of rules for how receipts are structured, hashed, chained, and verified. Any system can implement it.
+
+---
+
+## RIO Governance & Execution Loop
+
+When the full RIO platform is used, every action follows this 9-step flow:
+
+```mermaid
+flowchart TD
+    A[1. User requests action] --> B[2. AI proposes action]
+    B --> C[3. RIO evaluates risk + policy]
+    C --> D{4. Human approval required\nif HIGH risk}
+    D --> E[5. Approval authorizes execution\ntime-bounded]
+    E --> F[6. Executor performs action]
+    F --> G[7. Result recorded in receipt]
+    G --> H[8. Receipt generated & signed]
+    H --> I[9. Ledger updated\ntamper-evident]
+```
+
+LOW-risk actions skip step 4 (auto-approved). HIGH-risk actions always require step 4 (explicit cryptographic approval).
+
+**Result: Every action is provable. No Receipt = Did Not Happen.**
+
+> **Note:** The governance loop is an optional extension. The core receipt protocol (steps 7–9) works without governance. You can add governance later when your system needs it.
+
+---
+
+## Conformance
+
+The conformance test suite validates 8 categories across Node.js and Python (58 tests total):
+
+| Suite | Tests | What It Proves |
+|-------|-------|----------------|
+| Proof-Layer Receipts | 5 | Core 3-hash receipts generate and verify correctly |
+| Governed Receipts | 4 | Extended 5-hash receipts with governance/authorization |
+| Hash Integrity | 5 | SHA-256 produces correct, deterministic output; tampering detected |
+| Ledger Operations | 5 | Genesis linkage, multi-entry chains, standalone verifier agreement |
+| Cross-Verification | 2 | Receipt-to-ledger matching and mismatch detection |
+| Batch Verification | 2 | Multi-receipt verification with tamper detection |
+| Mixed Receipt Types | 2 | Proof-layer and governed receipts coexist in one ledger |
+| Optional Extensions | 3 | Ingestion provenance, identity binding, backward compatibility |
+
+```bash
+# Run conformance tests
+node tests/conformance.test.mjs                          # Node.js (29 tests)
+cd python && PYTHONPATH=. python3 tests/test_conformance.py  # Python (29 tests)
+```
+
+Any implementation of the RIO Receipt Protocol can run these tests to prove conformance. The test suite is the contract.
 
 ---
 
@@ -562,17 +548,89 @@ These limitations are inherent to any cryptographic proof system. External witne
 
 The formal protocol specifications are in the `spec/` directory:
 
+- **[receipt-protocol.md](spec/receipt-protocol.md)** — Full protocol specification: receipt structure, hash computation, lifecycle
 - **[receipt-schema.json](spec/receipt-schema.json)** — JSON Schema defining the receipt format, required and optional fields, types, and constraints
 - **[ledger-format.md](spec/ledger-format.md)** — Ledger entry structure, hash chain rules, genesis hash, canonical field ordering
 - **[signing-rules.md](spec/signing-rules.md)** — Signing algorithms, key management, verification procedures, Ed25519 requirements
+- **[canonical-rules.md](spec/canonical-rules.md)** — Canonical JSON serialization rules and required field ordering for each hash function
+- **[conformance.md](spec/conformance.md)** — Conformance levels, test requirements, and interoperability criteria
 
 These documents define the protocol independent of the reference implementation. Any language or platform can implement the protocol by following these specs and passing the conformance tests.
 
 ---
 
+## What Is in This Repo
+
+```
+rio-receipt-protocol/
+├── index.mjs                        # npm package entry point (unified exports)
+├── index.d.ts                       # TypeScript type declarations
+├── package.json                     # npm package configuration
+├── Dockerfile                       # Production container (API server, CLI, tests)
+├── docker-compose.yml               # Docker Compose for one-command startup
+├── spec/                            # The protocol specification
+│   ├── receipt-protocol.md          # Full protocol specification
+│   ├── receipt-schema.json          # JSON Schema for RIO Receipts (v2.2)
+│   ├── ledger-format.md            # Ledger hash chain specification
+│   ├── signing-rules.md            # Signing and verification rules
+│   ├── canonical-rules.md          # Canonical JSON serialization rules
+│   └── conformance.md              # Conformance levels and test requirements
+├── reference/                       # Reference implementation (Node.js, zero dependencies)
+│   ├── receipts.mjs                # Receipt generation and verification
+│   ├── ledger.mjs                  # Tamper-evident ledger (in-memory + JSON file)
+│   ├── verifier.mjs                # Standalone verification (receipts, chains, cross-checks)
+│   ├── web_verifier.js             # Browser-compatible verifier (Web Crypto API)
+│   ├── sign_receipt.py             # Python Ed25519 signing reference
+│   ├── verifier.py                 # Python standalone verifier
+│   └── verify_receipt_py.py        # Python receipt verification reference
+├── python/                          # Python package (pip install rio-receipt-protocol)
+│   ├── rio_receipt_protocol/       # Python module (zero required dependencies)
+│   ├── tests/                      # Python conformance tests (29 tests)
+│   └── pyproject.toml              # PyPI packaging configuration
+├── cli/                             # Command-line tools
+│   ├── verify.mjs                  # rio-verify CLI (receipt, chain, batch, cross, remote)
+│   └── demo.mjs                    # Interactive demo script
+├── docker/                          # Docker quickstart (lightweight REST API wrapper)
+│   ├── server.mjs                  # REST API server
+│   ├── Dockerfile                  # Lightweight container
+│   ├── docker-compose.yml          # Docker Compose
+│   └── README.md                   # Docker quickstart guide
+├── docs/                            # Documentation
+│   ├── integration-guide.md        # OpenAI, Anthropic, LangChain integration examples
+│   ├── architecture.md             # Architecture diagram and protocol positioning
+│   ├── rio-overview.md             # Full RIO system overview
+│   ├── FAQ.md                      # Frequently asked questions
+│   └── landing_page_content.md     # Protocol website content
+├── tests/                           # Node.js conformance test suite
+│   ├── conformance.test.mjs        # 29 tests across 8 categories
+│   └── legacy/                     # Pre-v2.2 tests (Ed25519 signing)
+├── examples/                        # Usage examples and demos
+│   ├── basic-usage.mjs             # Minimal flow: intent → receipt → ledger → verify
+│   ├── send_email_demo.mjs         # AI sends email — receipt proves it
+│   ├── file_delete_demo.mjs        # AI deletes file — receipt proves it
+│   ├── api_call_demo.mjs           # AI calls API — receipt proves it
+│   ├── money_transfer_demo.mjs     # AI transfers money — receipt proves it
+│   ├── database_persistence_demo.mjs # Receipts stored in database
+│   ├── key_rotation_demo.mjs       # Signing key rotation
+│   ├── end-to-end.mjs              # Full governed flow (Node.js)
+│   ├── end-to-end.py               # Full governed flow (Python)
+│   ├── sample_receipt_valid.json   # Valid proof-layer receipt
+│   ├── sample_receipt_governed.json # Valid governed receipt (5-hash)
+│   ├── sample_receipt_invalid.json # Tampered receipt (for testing)
+│   └── sample_ledger.json          # Sample ledger with hash chain
+├── CHANGELOG.md                     # Version history
+├── CONTRIBUTING.md                  # Contribution guidelines
+├── CODE_OF_CONDUCT.md               # Contributor Covenant v2.1
+├── SECURITY.md                      # Security policy and vulnerability reporting
+├── LICENSE-MIT                      # MIT license
+└── LICENSE-APACHE                   # Apache 2.0 license
+```
+
+---
+
 ## Architecture
 
-For a visual overview of where the RIO Receipt Protocol sits in a system, see the **[Architecture Diagram](docs/architecture.md)**. The protocol is the middle layer — it does not care what is above it (any AI provider) or below it (any storage backend). It produces verifiable receipts.
+For a visual overview of where the RIO Receipt Protocol sits in a system, see the **[Architecture Diagram](docs/architecture.md)** and the **[RIO System Overview](docs/rio-overview.md)**. The protocol is the middle layer — it does not care what is above it (any AI provider) or below it (any storage backend). It produces verifiable receipts.
 
 ---
 

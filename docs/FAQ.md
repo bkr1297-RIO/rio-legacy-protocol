@@ -98,12 +98,23 @@ Yes. The protocol is defined by a specification (`spec/`), not by a specific imp
 
 ### Is this published on npm / PyPI?
 
-Not yet. Install from GitHub:
+Yes. Both packages are published and available:
+
 ```bash
 # Node.js
-npm install github:bkr1297-RIO/rio-receipt-protocol
+npm install rio-receipt-protocol
 
 # Python
+pip install rio-receipt-protocol
+```
+
+You can also install from source:
+
+```bash
+# Node.js — from GitHub
+npm install github:bkr1297-RIO/rio-receipt-protocol
+
+# Python — from GitHub
 pip install git+https://github.com/bkr1297-RIO/rio-receipt-protocol.git#subdirectory=python
 ```
 
