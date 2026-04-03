@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  rio-api:
+    build: .
+    container_name: rio-receipt-api
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LEDGER_FILE=/app/data/ledger.json
+      # Optional: provide persistent Ed25519 keys
+      # Generate a key pair: node -e "import('rio-receipt-protocol').then(m => { const k = m.generateKeyPair(); console.log('PRIVATE:', k.privateKeyHex); console.log('PUBLIC:', k.publicKeyHex); })"
+      - ED25519_PRIVATE_KEY_HEX=${ED25519_PRIVATE_KEY_HEX:-}
+      - ED25519_PUBLIC_KEY_HEX=${ED25519_PUBLIC_KEY_HEX:-}
+    volumes:
+      - rio-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  rio-data:
+    driver: local
