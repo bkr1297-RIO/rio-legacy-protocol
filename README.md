@@ -115,25 +115,26 @@ Both the Node.js and Python implementations have **zero required dependencies**.
 ### Install
 
 ```bash
-# Node.js / npm
-npm install rio-receipt-protocol
+# Node.js — install from GitHub
+npm install github:bkr1297-RIO/rio-receipt-protocol
 
-# Python / pip
-pip install rio-receipt-protocol
+# Python — install from GitHub
+pip install git+https://github.com/bkr1297-RIO/rio-receipt-protocol.git#subdirectory=python
 ```
 
-> **Note:** The npm and PyPI packages are being prepared for initial publication. Until they are live, install from source:
->
-> ```bash
-> # Node.js — clone and use directly
-> git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
-> # import from the local path in your project
->
-> # Python — install from local source
-> git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
-> cd rio-receipt-protocol/python
-> pip install -e .
-> ```
+Or clone and use locally:
+
+```bash
+# Node.js — clone and import directly
+git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
+# import { generateReceipt, verifyReceipt } from "./rio-receipt-protocol/index.mjs"
+
+# Python — editable install from source
+git clone https://github.com/bkr1297-RIO/rio-receipt-protocol.git
+cd rio-receipt-protocol/python && pip install -e .
+```
+
+> **Note:** npm and PyPI registry packages are planned. Until then, the GitHub install methods above are the primary distribution path.
 
 Both packages have **zero required dependencies**. The Node.js package uses only `node:crypto` and `node:fs`. The Python package uses only the standard library.
 
@@ -247,6 +248,37 @@ See the **[Integration Guide](docs/integration-guide.md)** for complete examples
 - **LangChain** (callback handler for automatic receipt generation)
 - **Multi-agent systems** (shared ledger across agents)
 - **Governed receipts** (human-in-the-loop 5-hash chains)
+
+### Quick Integration (20 Lines)
+
+Copy this template to add receipts to any action in your system:
+
+```javascript
+import {
+  hashIntent, hashExecution, generateReceipt, verifyReceipt,
+  generateKeyPair, signReceipt, createLedger,
+} from "rio-receipt-protocol";
+
+const keys = generateKeyPair();  // Generate once, store privateKeyObj securely
+const ledger = createLedger();
+
+async function executeWithReceipt(action, agentId, parameters, doAction) {
+  const intentId = crypto.randomUUID();
+  const intentHash = hashIntent({ intent_id: intentId, action, agent_id: agentId, parameters, timestamp: new Date().toISOString() });
+
+  const result = await doAction(parameters);  // Your actual action
+
+  const executionHash = hashExecution({ intent_id: intentId, action, result, connector: "my-system", timestamp: new Date().toISOString() });
+  const receipt = generateReceipt({ intent_hash: intentHash, execution_hash: executionHash, intent_id: intentId, action, agent_id: agentId });
+  signReceipt(receipt, { privateKey: keys.privateKeyObj, publicKeyHex: keys.publicKeyHex, signerId: "my-gateway" });
+  ledger.append({ intent_id: intentId, action, agent_id: agentId, status: "executed", detail: action, receipt_hash: receipt.hash_chain.receipt_hash, intent_hash: intentHash });
+
+  console.log("Receipt valid:", verifyReceipt(receipt).valid);
+  return { result, receipt };
+}
+```
+
+> **Key order matters.** When constructing objects for hashing, keys must be in the exact order shown. Different key orders produce different hashes. See [Canonical Rules](spec/canonical-rules.md) for details.
 
 ---
 

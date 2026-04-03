@@ -128,7 +128,15 @@ export function verifyReceipt(receipt) {
       // Reconstruct the public key from raw hex bytes
       try {
         const pubKeyBytes = Buffer.from(ib.public_key_hex, "hex");
-        // Build Ed25519 SPKI DER: 12-byte header + 32-byte key
+        // Build Ed25519 SPKI DER: 12-byte ASN.1 header + 32-byte raw public key
+        // Breakdown of header bytes (302a300506032b6570032100):
+        //   30 2a       = SEQUENCE (42 bytes total)
+        //   30 05       = SEQUENCE (5 bytes, AlgorithmIdentifier)
+        //   06 03       = OID (3 bytes)
+        //   2b 65 70    = 1.3.101.112 (id-EdDSA / Ed25519, RFC 8410)
+        //   03 21       = BIT STRING (33 bytes)
+        //   00          = zero padding bits
+        //   [32 bytes]  = raw Ed25519 public key
         const spkiHeader = Buffer.from("302a300506032b6570032100", "hex");
         const spkiDer = Buffer.concat([spkiHeader, pubKeyBytes]);
         const publicKey = createPublicKey({ key: spkiDer, format: "der", type: "spki" });

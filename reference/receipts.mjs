@@ -210,11 +210,14 @@ export function generateKeyPair() {
 
   // Export raw key bytes as hex
   const publicKeyRaw = publicKey.export({ type: "spki", format: "der" });
-  // Ed25519 SPKI DER is 44 bytes: 12-byte header + 32-byte key
+  // Ed25519 SPKI DER is 44 bytes: 12-byte ASN.1 header + 32-byte key
+  // Header (302a300506032b6570032100): SEQUENCE > AlgorithmIdentifier(OID 1.3.101.112 = Ed25519) > BIT STRING
+  // We strip the 12-byte header to get the raw 32-byte public key
   const publicKeyHex = publicKeyRaw.subarray(12).toString("hex");
 
   const privateKeyRaw = privateKey.export({ type: "pkcs8", format: "der" });
-  // Ed25519 PKCS8 DER is 48 bytes: 16-byte header + 32-byte seed
+  // Ed25519 PKCS8 DER is 48 bytes: 16-byte ASN.1 header + 32-byte seed
+  // We strip the 16-byte header to get the raw 32-byte private key seed
   const privateKeyHex = privateKeyRaw.subarray(16).toString("hex");
 
   return { privateKeyHex, publicKeyHex, privateKeyObj: privateKey, publicKeyObj: publicKey };

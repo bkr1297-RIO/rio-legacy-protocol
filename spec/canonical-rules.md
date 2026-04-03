@@ -66,12 +66,22 @@ Python's `json.dumps(obj, separators=(',', ':'), sort_keys=False)` produces equi
 
 A receipt contains a **hash chain** — a sequence of hashes where the final hash (the receipt hash) is derived from the component hashes.
 
+The `receipt_hash` is computed by constructing a **JSON object** containing the `receipt_id`, the component hashes, and the `timestamp`, then hashing the canonical JSON serialization of that object.
+
 **Proof-layer receipt (3-hash chain):**
 
 ```
 intent_hash      = SHA-256(canonical(intent_object))
 execution_hash   = SHA-256(canonical(execution_object))
-receipt_hash     = SHA-256(intent_hash + execution_hash)
+
+receipt_content  = {
+  receipt_id:     <uuid>,
+  intent_hash:    <64-char hex>,
+  execution_hash: <64-char hex>,
+  timestamp:      <ISO 8601>
+}
+
+receipt_hash     = SHA-256(canonical(receipt_content))
 ```
 
 **Governed receipt (5-hash chain):**
@@ -81,10 +91,22 @@ intent_hash        = SHA-256(canonical(intent_object))
 governance_hash    = SHA-256(canonical(governance_object))
 authorization_hash = SHA-256(canonical(authorization_object))
 execution_hash     = SHA-256(canonical(execution_object))
-receipt_hash       = SHA-256(intent_hash + governance_hash + authorization_hash + execution_hash)
+
+receipt_content    = {
+  receipt_id:         <uuid>,
+  intent_hash:        <64-char hex>,
+  governance_hash:    <64-char hex>,
+  authorization_hash: <64-char hex>,
+  execution_hash:     <64-char hex>,
+  timestamp:          <ISO 8601>
+}
+
+receipt_hash       = SHA-256(canonical(receipt_content))
 ```
 
-The `+` operator means **string concatenation** of the hex hash strings, not binary concatenation. The concatenated string is then hashed with SHA-256.
+> **Key order matters.** The `receipt_content` object MUST be constructed with keys in the exact order shown above. The canonical JSON serialization preserves insertion order (see Section 1), so different key orders produce different hashes.
+
+> **Why a JSON object instead of simple concatenation?** The receipt hash binds the `receipt_id` and `timestamp` to the component hashes, ensuring that two receipts with identical component hashes but different IDs or timestamps produce different receipt hashes. This prevents receipt substitution attacks.
 
 ---
 
@@ -152,13 +174,27 @@ Verify the receipt has the required fields:
 
 ### Step 2: Hash Recomputation
 
-Recompute the receipt hash from the component hashes:
+Recompute the receipt hash from the component hashes by constructing the `receipt_content` object:
 
 ```
 if chain_length == 3:
-    expected = SHA-256(intent_hash + execution_hash)
+    receipt_content = {
+      receipt_id:     receipt.receipt_id,
+      intent_hash:    receipt.hash_chain.intent_hash,
+      execution_hash: receipt.hash_chain.execution_hash,
+      timestamp:      receipt.timestamp
+    }
 elif chain_length == 5:
-    expected = SHA-256(intent_hash + governance_hash + authorization_hash + execution_hash)
+    receipt_content = {
+      receipt_id:         receipt.receipt_id,
+      intent_hash:        receipt.hash_chain.intent_hash,
+      governance_hash:    receipt.hash_chain.governance_hash,
+      authorization_hash: receipt.hash_chain.authorization_hash,
+      execution_hash:     receipt.hash_chain.execution_hash,
+      timestamp:          receipt.timestamp
+    }
+
+expected = SHA-256(canonical(receipt_content))
 ```
 
 Compare `expected` with `receipt.hash_chain.receipt_hash`. If they differ → **INVALID**.
@@ -224,8 +260,8 @@ For a new implementation to be conformant:
 
 - [ ] SHA-256 hashing produces 64-char lowercase hex
 - [ ] Canonical JSON uses no whitespace, preserves key insertion order
-- [ ] Proof-layer receipt hash = SHA-256(intent_hash + execution_hash)
-- [ ] Governed receipt hash = SHA-256(intent_hash + governance_hash + authorization_hash + execution_hash)
+- [ ] Proof-layer receipt hash = SHA-256(canonical({receipt_id, intent_hash, execution_hash, timestamp}))
+- [ ] Governed receipt hash = SHA-256(canonical({receipt_id, intent_hash, governance_hash, authorization_hash, execution_hash, timestamp}))
 - [ ] Ed25519 key generation produces 32-byte keys
 - [ ] Signing payload is UTF-8(receipt_hash), not raw bytes
 - [ ] Signature is 64 bytes (128 hex chars)

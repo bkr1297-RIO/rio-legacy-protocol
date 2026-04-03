@@ -65,7 +65,7 @@ print(result["valid"])  # True or False
 
 ### What is canonical JSON?
 
-Deterministic JSON serialization with sorted keys, no whitespace (`separators=(",",":")` in Python, equivalent in Node.js), and UTF-8 encoding. This ensures that the same data always produces the same hash, regardless of which language or platform generates it. See `spec/canonical-rules.md` for the full specification.
+Deterministic JSON serialization with explicit insertion order (not sorted — fields must appear in the exact order defined by the spec), no whitespace (`separators=(",",":")` in Python, `JSON.stringify` with no spacing in Node.js), and UTF-8 encoding. This ensures that the same data always produces the same hash, regardless of which language or platform generates it. Key order matters — see `spec/canonical-rules.md` for the required field order for each hash function.
 
 ### What is the hash chain?
 

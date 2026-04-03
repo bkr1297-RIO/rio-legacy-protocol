@@ -23,15 +23,50 @@ The receipt protocol is framework-agnostic. It does not wrap or modify your AI c
 
 ## Core Pattern
 
-Every integration follows three steps:
+Every integration follows four steps:
 
 ```
 1. BEFORE the action  →  hash the intent (what was requested)
 2. AFTER  the action  →  hash the execution (what actually happened)
 3. ALWAYS             →  generate a receipt linking both hashes
+4. OPTIONALLY         →  sign the receipt with Ed25519 for non-repudiation
 ```
 
 The receipt's `hash_chain` is the cryptographic proof. The `receipt_hash` is computed from the intent and execution hashes, so tampering with any field invalidates the chain. Optional governance and authorization hashes extend this to a 5-hash chain for human-approval workflows.
+
+### Adding Ed25519 Signatures
+
+Signing is optional but recommended for production deployments. It binds the receipt to a specific signer, providing non-repudiation.
+
+**Node.js:**
+
+```javascript
+import { generateKeyPair, signReceipt } from "rio-receipt-protocol";
+
+// Generate a key pair once (store the private key securely)
+const keys = generateKeyPair();
+
+// After generating a receipt, sign it
+signReceipt(receipt, { privateKey: keys.privateKeyObj, publicKeyHex: keys.publicKeyHex, signerId: "my-gateway" });
+// receipt.identity_binding now contains:
+//   signature_hex, public_key_hex, signer_id, signed_at,
+//   verification_method: "ed25519-nacl", ed25519_signed: true
+```
+
+**Python:**
+
+```python
+from rio_receipt_protocol import generate_keypair, sign_receipt
+
+# Generate a key pair once (store the private key securely)
+public_key, private_key = generate_keypair()
+
+# After generating a receipt, sign it
+signed_receipt = sign_receipt(receipt, private_key, "my-gateway")
+# signed_receipt["identity_binding"] now contains the signature
+```
+
+The verifier automatically checks Ed25519 signatures when present — no extra verification code needed.
 
 ---
 
@@ -39,9 +74,10 @@ The receipt's `hash_chain` is the cryptographic proof. The `receipt_hash` is com
 
 ```javascript
 import OpenAI from "openai";
-import { hashIntent, hashExecution, generateReceipt, verifyReceipt } from "rio-receipt-protocol";
+import { hashIntent, hashExecution, generateReceipt, verifyReceipt, generateKeyPair, signReceipt } from "rio-receipt-protocol";
 
 const openai = new OpenAI();
+const keys = generateKeyPair(); // Generate once, store securely
 
 async function governedCompletion(prompt, agentId = "openai-agent") {
   const intentId = crypto.randomUUID();
@@ -80,7 +116,10 @@ async function governedCompletion(prompt, agentId = "openai-agent") {
     agent_id: agentId,
   });
 
-  // 5. Verify immediately
+  // 5. Sign the receipt
+  signReceipt(receipt, { privateKey: keys.privateKeyObj, publicKeyHex: keys.publicKeyHex, signerId: "openai-gateway" });
+
+  // 6. Verify (includes signature check)
   const result = verifyReceipt(receipt);
   console.log("Receipt valid:", result.valid);
 

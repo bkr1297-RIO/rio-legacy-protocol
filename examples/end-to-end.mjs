@@ -6,9 +6,10 @@
  *   1. Hash an intent (what was requested)
  *   2. Hash an execution (what actually happened)
  *   3. Generate a cryptographic receipt linking both
- *   4. Record the receipt in a tamper-evident ledger
- *   5. Verify the receipt independently
- *   6. Verify the entire ledger chain
+ *   4. Sign the receipt with Ed25519
+ *   5. Record the receipt in a tamper-evident ledger
+ *   6. Verify the receipt independently
+ *   7. Verify the entire ledger chain
  *
  * Run with: node examples/end-to-end.mjs
  * Zero external dependencies — uses only the reference implementations.
@@ -27,6 +28,8 @@ import {
   createLedger,
   verifyReceiptStandalone,
   verifyChain,
+  generateKeyPair,
+  signReceipt,
 } from "../index.mjs";
 
 // ─── Helper ─────────────────────────────────────────────────────────
@@ -180,9 +183,42 @@ console.log("  Receipt hash:", govReceipt.hash_chain.receipt_hash);
 const govVerify = verifyReceipt(govReceipt);
 console.log("\n  ✓ Governed receipt valid:", govVerify.valid);
 
-// ─── 3. Ledger ──────────────────────────────────────────────────────
+// ─── 3. Ed25519 Signing ─────────────────────────────────────────────
 
-divider("STEP 3: Tamper-Evident Ledger");
+divider("STEP 3: Ed25519 Signing");
+
+// Generate a signing key pair
+const keys = generateKeyPair();
+console.log("Key pair generated:");
+console.log("  Public key:", keys.publicKeyHex.substring(0, 32) + "...");
+console.log("  Private key:", keys.privateKeyHex.substring(0, 16) + "... (keep secret)\n");
+
+// Sign the proof-layer receipt
+signReceipt(receipt, {
+  privateKey: keys.privateKeyObj,
+  publicKeyHex: keys.publicKeyHex,
+  signerId: "demo-gateway",
+});
+console.log("Proof-layer receipt signed:");
+console.log("  Signer:", receipt.identity_binding.signer_id);
+console.log("  Signature:", receipt.identity_binding.signature_hex.substring(0, 32) + "...");
+console.log("  Signed at:", receipt.identity_binding.signed_at);
+console.log("  Method:", receipt.identity_binding.verification_method);
+
+// Sign the governed receipt
+signReceipt(govReceipt, {
+  privateKey: keys.privateKeyObj,
+  publicKeyHex: keys.publicKeyHex,
+  signerId: "demo-gateway",
+});
+console.log("\nGoverned receipt signed:");
+console.log("  Signer:", govReceipt.identity_binding.signer_id);
+console.log("  Signature:", govReceipt.identity_binding.signature_hex.substring(0, 32) + "...");
+console.log("  Ed25519 signed:", govReceipt.identity_binding.ed25519_signed);
+
+// ─── 4. Ledger ──────────────────────────────────────────────────────
+
+divider("STEP 4: Tamper-Evident Ledger");
 
 const ledger = createLedger();
 
@@ -221,9 +257,9 @@ const chainResult = ledger.verifyChain();
 console.log("\n  ✓ Ledger chain valid:", chainResult.valid);
 console.log("  Entries verified:", chainResult.entries_checked);
 
-// ─── 4. Independent Verification ────────────────────────────────────
+// ─── 5. Independent Verification ────────────────────────────────────
 
-divider("STEP 4: Independent Verification");
+divider("STEP 5: Independent Verification");
 
 console.log("Any third party can verify receipts and ledger chains");
 console.log("without access to the original system.\n");
@@ -239,9 +275,9 @@ console.log("Governed receipt:   ", standalone2.valid ? "✓ VALID" : "✗ INVAL
 const chainVerify = verifyChain(ledger.export());
 console.log("Ledger chain:       ", chainVerify.valid ? "✓ INTACT" : "✗ BROKEN");
 
-// ─── 5. Tamper Detection ────────────────────────────────────────────
+// ─── 6. Tamper Detection ────────────────────────────────────────────
 
-divider("STEP 5: Tamper Detection");
+divider("STEP 6: Tamper Detection");
 
 console.log("Modifying any field in a receipt invalidates the hash chain.\n");
 
