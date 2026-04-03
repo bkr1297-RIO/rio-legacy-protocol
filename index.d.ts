@@ -106,18 +106,18 @@ export interface LedgerEntry {
 
 export interface Ledger {
   append(data: {
-    intentId: string;
+    intent_id: string;
     action: string;
-    agentId: string;
+    agent_id: string;
     status: string;
     detail: string;
-    receiptHash?: string;
-    authorizationHash?: string;
-    intentHash?: string;
+    receipt_hash?: string;
+    authorization_hash?: string;
+    intent_hash?: string;
   }): LedgerEntry;
   verifyChain(): ChainVerificationResult;
   getEntries(limit?: number, offset?: number): LedgerEntry[];
-  getEntriesByIntent(intentId: string): LedgerEntry[];
+  getEntriesByIntent(intent_id: string): LedgerEntry[];
   getEntryCount(): number;
   getCurrentHash(): string;
   getLatestEntry(): LedgerEntry | null;
@@ -125,15 +125,15 @@ export interface Ledger {
 }
 
 export interface GenerateReceiptData {
-  intentHash: string;
-  executionHash: string;
-  governanceHash?: string;
-  authorizationHash?: string;
-  intentId: string;
+  intent_hash: string;
+  execution_hash: string;
+  governance_hash?: string;
+  authorization_hash?: string;
+  intent_id: string;
   action: string;
-  agentId: string;
-  authorizedBy?: string;
-  receiptType?: string;
+  agent_id: string;
+  authorized_by?: string;
+  receipt_type?: string;
   ingestion?: Partial<IngestionProvenance>;
   identity_binding?: Partial<IdentityBinding>;
 }
