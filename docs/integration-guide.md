@@ -18,6 +18,7 @@ The receipt protocol is framework-agnostic. It does not wrap or modify your AI c
 8. [Multi-Agent Systems](#multi-agent-systems)
 9. [Governed Receipts (Human-in-the-Loop)](#governed-receipts-human-in-the-loop)
 10. [Verifying Receipts](#verifying-receipts)
+11. [Regulated Industry Integration](#regulated-industry-integration)
 
 ---
 
@@ -659,6 +660,70 @@ with open("ledger.json") as f:
 chain = verify_chain(entries)
 print("CHAIN INTACT" if chain["valid"] else "CHAIN BROKEN")
 ```
+
+---
+
+## Regulated Industry Integration
+
+For regulated environments (finance, healthcare, legal, government), the receipt protocol provides the audit infrastructure required by compliance frameworks. The protocol maps directly to regulatory requirements:
+
+| Requirement | Framework | How RIO Addresses It |
+|---|---|---|
+| Immutable audit trail | SOX, HIPAA, GDPR Art. 30 | Hash-chained ledger — entries cannot be modified without breaking the chain |
+| Non-repudiation | PCI-DSS, eIDAS | Ed25519 signatures bind receipts to specific signers |
+| Human authorization proof | SOX Section 302, HIPAA § 164.312 | Governed receipts include cryptographic proof of human approval |
+| Independent verification | SOC 2 Type II, ISO 27001 | Any party can verify receipts without access to the original system |
+| Tamper detection | NIST 800-53 AU-10 | SHA-256 hash chain detects any modification to any entry |
+
+### Compliance Pipeline Pattern
+
+For regulated actions, use the governed receipt flow with mandatory signing:
+
+```
+User Request
+    │
+    ▼
+┌─────────────────┐
+│  Hash Intent    │ ← Record WHAT was requested
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Risk Assessment│ ← Evaluate against policy
+│  + Governance   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Human Approval │ ← Cryptographic authorization
+│  (if required)  │    (Ed25519 signature)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Execute Action │ ← Perform the regulated action
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Generate       │ ← 5-hash governed receipt
+│  Signed Receipt │    with Ed25519 signature
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Append Ledger  │ ← Immutable, hash-chained record
+└─────────────────┘
+```
+
+### Key Properties for Auditors
+
+- **Every receipt is self-contained.** An auditor can verify a single receipt without access to the system that generated it. The receipt includes all hashes, the signature, and the public key.
+- **The ledger is append-only.** Each entry's hash includes the previous entry's hash. Inserting, deleting, or reordering entries breaks the chain.
+- **Signatures are non-repudiable.** Ed25519 signatures prove that a specific key holder signed a specific receipt at a specific time.
+- **The protocol is deterministic.** Given the same inputs, any implementation (Node.js, Python, or custom) produces the same hashes. This enables cross-platform verification.
+
+For the threat model and scope limitations, see the [Security Properties](../README.md#security-properties) section of the README.
 
 ---
 
