@@ -162,8 +162,11 @@ const executionHash = hashExecution({
 
 // 3. Generate a receipt binding both hashes
 const receipt = generateReceipt({
-  intentHash, executionHash,
-  intentId: "i-001", action: "send_email", agentId: "agent-1",
+  intent_hash: intentHash,
+  execution_hash: executionHash,
+  intent_id: "i-001",
+  action: "send_email",
+  agent_id: "agent-1",
 });
 
 // 4. Verify it
@@ -172,9 +175,12 @@ console.log(verifyReceipt(receipt).valid); // true
 // 5. Write to a tamper-evident ledger
 const ledger = createLedger();
 ledger.append({
-  intentId: "i-001", action: "send_email", agentId: "agent-1",
-  status: "executed", detail: "Email sent",
-  receiptHash: receipt.hash_chain.receipt_hash,
+  intent_id: "i-001",
+  action: "send_email",
+  agent_id: "agent-1",
+  status: "executed",
+  detail: "Email sent",
+  receipt_hash: receipt.hash_chain.receipt_hash,
 });
 console.log(ledger.verifyChain().valid); // true
 ```
@@ -279,6 +285,28 @@ async function executeWithReceipt(action, agentId, parameters, doAction) {
 ```
 
 > **Key order matters.** When constructing objects for hashing, keys must be in the exact order shown. Different key orders produce different hashes. See [Canonical Rules](spec/canonical-rules.md) for details.
+
+---
+
+## RIO Governance & Execution Loop
+
+**Every action follows this exact 9-step flow:**
+
+```mermaid
+flowchart TD
+    A[1. User requests action] --> B[2. AI proposes action]
+    B --> C[3. RIO evaluates risk + policy]
+    C --> D{4. Human approval required\nif HIGH risk}
+    D --> E[5. Approval authorizes execution\ntime-bounded]
+    E --> F[6. Executor performs action]
+    F --> G[7. Result recorded in receipt]
+    G --> H[8. Receipt generated & signed]
+    H --> I[9. Ledger updated\ntamper-evident]
+```
+
+LOW-risk actions skip step 4 (auto-approved). HIGH-risk actions always require step 4 (explicit cryptographic approval).
+
+**Result: Every action is provable. No Receipt = Did Not Happen.**
 
 ---
 
