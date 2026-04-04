@@ -14,7 +14,7 @@ Run with: python examples/end-to-end.py
 Zero external dependencies — uses only the Python standard library
 and the reference implementations.
 
-Version: 2.2.0
+Version: 2.3.0
 License: MIT OR Apache-2.0
 """
 

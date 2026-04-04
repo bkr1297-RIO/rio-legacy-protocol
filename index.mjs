@@ -6,7 +6,7 @@
  * or from specific subpaths for tree-shaking.
  *
  * @module rio-receipt-protocol
- * @version 2.2.0
+ * @version 2.3.0
  * @license MIT OR Apache-2.0
  */
 

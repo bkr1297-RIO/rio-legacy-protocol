@@ -1,15 +1,18 @@
 /**
- * RIO Receipt Protocol — Conformance Test Suite v2.2
+ * RIO Receipt Protocol — Conformance Test Suite v2.3
  *
  * Tests both proof-layer receipts (core open standard) and
  * governed receipts (optional extension). Any implementation
  * MUST pass the proof-layer tests. Governed tests are for
  * implementations that include governance/authorization.
  *
+ * v2.3 adds identity enrichment tests (role_exercised, actor_type,
+ * key_version, delegation).
+ *
  * Run: node tests/conformance.test.mjs
  * Exit code 0 = all pass | Exit code 1 = failure
  *
- * @version 2.0.0
+ * @version 2.3.0
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -690,10 +693,160 @@ test("signed receipt cross-verifies against ledger entry", () => {
   assert(standaloneResult.signature_valid === true, "Signature should verify after ledger append");
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY 10: IDENTITY ENRICHMENT (v2.3)
+// ═══════════════════════════════════════════════════════════════════════
+
+suite("10. Identity Enrichment (v2.3)");
+
+test("signReceipt accepts role_exercised and actor_type", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+    roleExercised: "approver",
+    actorType: "human",
+  });
+  assertEqual(receipt.identity_binding.role_exercised, "approver");
+  assertEqual(receipt.identity_binding.actor_type, "human");
+  const result = standaloneVerify(receipt);
+  assert(result.valid, "Receipt with identity enrichment should verify");
+  assert(result.signature_valid === true, "Signature should be valid");
+});
+
+test("signReceipt accepts key_version", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+    keyVersion: 3,
+  });
+  assertEqual(receipt.identity_binding.key_version, 3);
+  const result = standaloneVerify(receipt);
+  assert(result.valid, "Receipt with key_version should verify");
+});
+
+test("signReceipt accepts delegation object", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  const delegation = {
+    delegation_id: "del_001",
+    delegate_id: "user_brian",
+    delegate_actor_type: "human",
+    scope: ["send_email", "schedule_meeting"],
+    risk_ceiling: "MEDIUM",
+    delegated_at: new Date().toISOString(),
+    expires_at: null,
+  };
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "ai-agent-001",
+    roleExercised: "operator",
+    actorType: "ai_agent",
+    delegation,
+  });
+  assertEqual(receipt.identity_binding.role_exercised, "operator");
+  assertEqual(receipt.identity_binding.actor_type, "ai_agent");
+  assertEqual(receipt.identity_binding.delegation.delegation_id, "del_001");
+  assertEqual(receipt.identity_binding.delegation.delegate_id, "user_brian");
+  assertEqual(receipt.identity_binding.delegation.risk_ceiling, "MEDIUM");
+  assert(Array.isArray(receipt.identity_binding.delegation.scope));
+  assertEqual(receipt.identity_binding.delegation.scope.length, 2);
+  const result = standaloneVerify(receipt);
+  assert(result.valid, "Receipt with delegation should verify");
+  assert(result.signature_valid === true, "Signature should be valid with delegation");
+});
+
+test("identity enrichment fields do not affect receipt hash", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  // Capture the receipt hash before signing
+  const hashBefore = receipt.hash_chain.receipt_hash;
+  // Sign with full identity enrichment
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "signer-a",
+    roleExercised: "admin",
+    actorType: "human",
+    keyVersion: 5,
+  });
+  // Receipt hash should be unchanged (enrichment is in identity_binding, not hash_chain)
+  assertEqual(receipt.hash_chain.receipt_hash, hashBefore,
+    "Identity enrichment must not change receipt_hash");
+});
+
+test("v2.3 receipt without enrichment fields still verifies (backward compat)", () => {
+  const keys = generateKeyPair();
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+  });
+  signReceipt(receipt, {
+    privateKey: keys.privateKeyObj,
+    publicKeyHex: keys.publicKeyHex,
+    signerId: "test-signer",
+  });
+  // No enrichment fields set — should still work
+  assert(receipt.identity_binding.role_exercised === undefined || receipt.identity_binding.role_exercised === null,
+    "role_exercised should be absent or null when not provided");
+  const result = standaloneVerify(receipt);
+  assert(result.valid, "Receipt without enrichment should verify");
+  assert(result.signature_valid === true, "Signature should be valid");
+});
+
+test("generateReceipt with identity_binding includes v2.3 fields", () => {
+  const intent = makeIntent();
+  const exec = makeExecution(intent.intent_id);
+  const receipt = generateReceipt({
+    intent_hash: hashIntent(intent), execution_hash: hashExecution(exec),
+    intent_id: intent.intent_id, action: intent.action, agent_id: intent.agent_id,
+    identity_binding: {
+      signer_id: "pre-bound-signer",
+      ed25519_signed: false,
+      role_exercised: "auditor",
+      actor_type: "service",
+      key_version: 2,
+    },
+  });
+  assertEqual(receipt.identity_binding.role_exercised, "auditor");
+  assertEqual(receipt.identity_binding.actor_type, "service");
+  assertEqual(receipt.identity_binding.key_version, 2);
+  const result = verifyReceipt(receipt);
+  assert(result.valid, "Receipt with pre-bound identity enrichment should verify");
+});
+
 // ─── Results ─────────────────────────────────────────────────────────
 
 console.log(`\n${"═".repeat(60)}`);
-console.log(`${BOLD}RIO Receipt Protocol v2.2 Conformance Results${RESET}`);
+console.log(`${BOLD}RIO Receipt Protocol v2.3 Conformance Results${RESET}`);
 console.log(`${"═".repeat(60)}`);
 console.log(`  Total:  ${total}`);
 console.log(`  ${GREEN}Passed: ${passed}${RESET}`);

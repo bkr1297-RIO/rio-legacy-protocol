@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rio-receipt-protocol"
-version = "2.2.0"
+version = "2.3.0"
 description = "Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails. Zero dependencies."
 readme = "README.md"
 license = {text = "MIT OR Apache-2.0"}

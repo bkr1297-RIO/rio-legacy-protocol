@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rioprotocol.org/schema/receipt/v2.2",
+  "$id": "https://rioprotocol.org/schema/receipt/v2.3",
   "title": "RIO Receipt",
   "description": "A cryptographic record of an AI action, written to a tamper-evident ledger. The core receipt proves what happened, when, and which system initiated it. Governance and authorization fields are optional extensions for systems that implement human approval workflows.",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "object",
   "required": [
     "receipt_id",
@@ -140,11 +140,11 @@
     },
     "identity_binding": {
       "type": "object",
-      "description": "Optional. Cryptographic proof binding the receipt to a specific signer identity.",
+      "description": "Optional. Cryptographic proof binding the receipt to a specific signer identity. v2.3 adds role_exercised, actor_type, key_version, and delegation as optional enrichment fields.",
       "properties": {
         "signer_id": {
           "type": ["string", "null"],
-          "description": "Identifier of the signing authority."
+          "description": "Identifier of the signing authority (principal ID)."
         },
         "public_key_hex": {
           "type": ["string", "null"],
@@ -167,6 +167,65 @@
         "ed25519_signed": {
           "type": "boolean",
           "description": "Whether this receipt was signed with Ed25519."
+        },
+        "role_exercised": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional (v2.3+). The role the signer was exercising when they signed this receipt (e.g., 'approver', 'operator', 'auditor'). Informational metadata — the cryptographic proof is the signature itself."
+        },
+        "actor_type": {
+          "type": ["string", "null"],
+          "enum": ["human", "ai_agent", "service", "system", "external", null],
+          "default": null,
+          "description": "Optional (v2.3+). The type of actor that signed this receipt. Informational metadata for audit enrichment."
+        },
+        "key_version": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null,
+          "description": "Optional (v2.3+). Version number of the signing key, enabling verifiers to look up the correct public key after key rotation. This is a lookup hint, not included in the hash chain computation."
+        },
+        "delegation": {
+          "type": ["object", "null"],
+          "default": null,
+          "description": "Optional (v2.3+). Present when the action was performed under a delegation grant. The signer_id remains the delegator (the authority who granted the delegation).",
+          "properties": {
+            "delegation_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Unique identifier of the delegation grant."
+            },
+            "delegate_id": {
+              "type": "string",
+              "description": "Identifier of the delegate (the entity that performed the action on behalf of the delegator)."
+            },
+            "delegate_actor_type": {
+              "type": "string",
+              "enum": ["human", "ai_agent", "service", "system", "external"],
+              "description": "The type of the delegate actor."
+            },
+            "scope": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "List of action types the delegate is authorized to perform."
+            },
+            "risk_ceiling": {
+              "type": "string",
+              "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+              "description": "Maximum risk level the delegate is authorized to handle."
+            },
+            "delegated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "ISO 8601 UTC timestamp of when the delegation was granted."
+            },
+            "expires_at": {
+              "type": ["string", "null"],
+              "format": "date-time",
+              "description": "ISO 8601 UTC timestamp of when the delegation expires. Null for non-expiring delegations."
+            }
+          },
+          "required": ["delegation_id", "delegate_id", "delegate_actor_type", "scope", "risk_ceiling", "delegated_at"]
         }
       },
       "required": ["ed25519_signed"],

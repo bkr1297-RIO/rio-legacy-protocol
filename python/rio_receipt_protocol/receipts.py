@@ -72,7 +72,14 @@ def generate_receipt(
     authorized_by: str = None, receipt_type: str = None,
     ingestion: dict = None, identity_binding: dict = None,
 ) -> dict:
-    """Generate a RIO Receipt (v2.2)."""
+    """Generate a RIO Receipt (v2.3).
+
+    v2.3 adds optional identity enrichment fields:
+      - role_exercised: role the signer was exercising
+      - actor_type: type of actor (human, ai_agent, service, system, external)
+      - key_version: signing key version for rotation support
+      - delegation: delegation grant details when acting on behalf of another
+    """
     receipt_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
@@ -119,6 +126,11 @@ def generate_receipt(
             "signature_payload_hash": identity_binding.get("signature_payload_hash"),
             "verification_method": identity_binding.get("verification_method"),
             "ed25519_signed": identity_binding.get("ed25519_signed", False),
+            # v2.3 identity enrichment fields (optional)
+            "role_exercised": identity_binding.get("role_exercised"),
+            "actor_type": identity_binding.get("actor_type"),
+            "key_version": identity_binding.get("key_version"),
+            "delegation": identity_binding.get("delegation"),
         }
 
     return receipt
@@ -192,7 +204,11 @@ def generate_keypair() -> dict:
         )
 
 
-def sign_receipt(receipt: dict, private_key_obj, public_key_hex: str, signer_id: str) -> dict:
+def sign_receipt(
+    receipt: dict, private_key_obj, public_key_hex: str, signer_id: str,
+    role_exercised: str = None, actor_type: str = None,
+    key_version: int = None, delegation: dict = None,
+) -> dict:
     """
     Sign a receipt with Ed25519.
 
@@ -207,6 +223,10 @@ def sign_receipt(receipt: dict, private_key_obj, public_key_hex: str, signer_id:
         private_key_obj: Ed25519 private key object (from generate_keypair)
         public_key_hex: 64-char hex-encoded public key
         signer_id: Identifier of the signing authority
+        role_exercised: v2.3 — role the signer is exercising (optional)
+        actor_type: v2.3 — type of actor: human, ai_agent, service, system, external (optional)
+        key_version: v2.3 — signing key version number (optional)
+        delegation: v2.3 — delegation grant details dict (optional)
     """
     receipt_hash = receipt.get("hash_chain", {}).get("receipt_hash", "")
     if not receipt_hash or len(receipt_hash) != 64:
@@ -243,5 +263,10 @@ def sign_receipt(receipt: dict, private_key_obj, public_key_hex: str, signer_id:
                      f"{datetime.now(timezone.utc).microsecond // 1000:03d}Z",
         "verification_method": "ed25519-nacl",
         "ed25519_signed": True,
+        # v2.3 identity enrichment fields (optional)
+        "role_exercised": role_exercised,
+        "actor_type": actor_type,
+        "key_version": key_version,
+        "delegation": delegation,
     }
     return receipt

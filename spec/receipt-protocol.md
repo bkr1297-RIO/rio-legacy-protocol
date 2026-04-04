@@ -284,28 +284,71 @@ Those belong to higher-level architectural systems that may use this protocol.
 
 ---
 
-## 16. Reference Implementation Mapping (RIO v2.2)
+## 16. Identity Enrichment (v2.3)
 
-The RIO v2.2 reference implementation uses an internal schema optimized for hash chain computation. This section documents how the canonical protocol fields map to the v2.2 internal representation.
+Version 2.3 adds optional identity enrichment fields to the `identity_binding` object. These fields support role-based access control, actor classification, key rotation, and delegated authority without changing the receipt hash computation or breaking backward compatibility.
+
+### New Optional Fields in `identity_binding`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `role_exercised` | string | The role the signer was exercising at the time of signing (e.g., `approver`, `operator`, `auditor`, `admin`) |
+| `actor_type` | string | Classification of the signing entity: `human`, `ai_agent`, `service`, `system`, or `external` |
+| `key_version` | integer | Version number of the signing key, supporting key rotation without identity change |
+| `delegation` | object | Delegation grant details when the signer is acting on behalf of another identity |
+
+### Delegation Object
+
+When a signer acts under delegated authority, the `delegation` field MUST contain:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `delegation_id` | string | Unique identifier for the delegation grant |
+| `delegate_id` | string | Identity of the principal who delegated authority |
+| `delegate_actor_type` | string | Actor type of the delegating principal |
+| `scope` | array | List of action types the delegation covers |
+| `risk_ceiling` | string | Maximum risk level the delegate may approve: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
+| `delegated_at` | string | ISO 8601 timestamp when delegation was granted |
+| `expires_at` | string or null | ISO 8601 timestamp when delegation expires, or null for no expiry |
+
+### Backward Compatibility
+
+All v2.3 fields are optional and additive. A v2.2 verifier encountering a v2.3 receipt will:
+
+- Successfully verify the receipt hash (identity enrichment fields are not included in hash computation)
+- Successfully verify the Ed25519 signature (the signed payload is still `receipt_hash`)
+- Ignore unknown fields in `identity_binding` per standard JSON handling
+
+A v2.3 verifier encountering a v2.2 receipt will treat missing enrichment fields as `null`.
+
+---
+
+## 17. Reference Implementation Mapping (RIO v2.3)
+
+The RIO v2.3 reference implementation uses an internal schema optimized for hash chain computation. This section documents how the canonical protocol fields map to the v2.3 internal representation.
 
 ### Receipt Field Mapping
 
-| Canonical Field | RIO v2.2 Field | Notes |
+| Canonical Field | RIO v2.3 Field | Notes |
 |----------------|----------------|-------|
 | `receipt_id` | `receipt_id` | Direct mapping |
 | `timestamp` | `timestamp` | Direct mapping |
 | `protocol_version` | `version` | Renamed for brevity |
-| `actor_id` | `agent_id` | v2.2 uses agent-specific terminology |
+| `actor_id` | `agent_id` | v2.3 uses agent-specific terminology |
 | `action_type` | `action` | Renamed for brevity |
-| `action_summary` | Derived from `action` + execution context | v2.2 hashes the action and result separately |
-| `decision` | `receipt_type` | v2.2 uses `"action"` (proof-layer) or `"governed_action"` (governed) |
-| `receipt_hash` | `hash_chain.receipt_hash` | Nested inside the `hash_chain` object in v2.2 |
-| `signature` | `identity_binding.signature` | Optional extension in v2.2 |
-| `verification_status` | Computed at verification time | Not stored in v2.2 receipts; determined by `verifyReceipt()` |
+| `action_summary` | Derived from `action` + execution context | v2.3 hashes the action and result separately |
+| `decision` | `receipt_type` | v2.3 uses `"action"` (proof-layer) or `"governed_action"` (governed) |
+| `receipt_hash` | `hash_chain.receipt_hash` | Nested inside the `hash_chain` object |
+| `signature` | `identity_binding.signature_hex` | Optional extension |
+| `role_exercised` | `identity_binding.role_exercised` | v2.3 addition |
+| `actor_type` | `identity_binding.actor_type` | v2.3 addition |
+| `key_version` | `identity_binding.key_version` | v2.3 addition |
+| `delegation` | `identity_binding.delegation` | v2.3 addition |
+| `verification_status` | Computed at verification time | Not stored in receipts; determined by `verifyReceipt()` |
 
 ### Hash Chain Model
 
-The v2.2 implementation extends the canonical `receipt_hash` into a multi-hash chain that provides finer-grained proof:
+The v2.3 implementation extends the canonical `receipt_hash` into a multi-hash chain that provides finer-grained proof:
 
 **Proof-layer receipt (3-hash chain):**
 
@@ -358,21 +401,21 @@ function toCanonical(v22Receipt) {
 }
 ```
 
-This mapping allows any system that understands the canonical protocol to verify receipts produced by the RIO v2.2 reference implementation.
+This mapping allows any system that understands the canonical protocol to verify receipts produced by the RIO v2.3 reference implementation.
 
 ---
 
-## 17. Summary
+## 18. Summary
 
 The RIO Receipt Protocol provides a portable, auditable proof layer for AI and system actions. It is intended to serve as a foundational open standard for tamper-evident action receipts across governed and non-governed execution environments.
 
 ---
 
-## Related Specifications
+## 19. Related Specifications
 
 | Document | Description |
 |----------|-------------|
 | [Ledger Format](ledger-format.md) | Append-only, hash-chained ledger structure |
 | [Conformance](conformance.md) | Conformance levels and test requirements |
 | [Signing Rules](signing-rules.md) | Ed25519 signing and identity binding |
-| [Receipt Schema (v2.2)](receipt-schema.json) | JSON Schema for the v2.2 reference implementation |
+| [Receipt Schema (v2.3)](receipt-schema.json) | JSON Schema for the v2.3 reference implementation |

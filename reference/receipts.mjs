@@ -10,7 +10,7 @@
  * implement human approval workflows (e.g., the full RIO platform).
  *
  * @module rio-receipt-protocol/receipts
- * @version 2.2.0
+ * @version 2.3.0
  * @license MIT OR Apache-2.0
  */
 
@@ -108,10 +108,16 @@ function buildChainOrder(data) {
 }
 
 /**
- * Generate a RIO Receipt (v2.2).
+ * Generate a RIO Receipt (v2.3).
  *
  * Core proof layer: requires intent_hash + execution_hash.
  * Governed extension: also accepts governance_hash + authorization_hash.
+ *
+ * v2.3 adds optional identity enrichment fields:
+ *   - role_exercised: role the signer was exercising
+ *   - actor_type: type of actor (human, ai_agent, service, system, external)
+ *   - key_version: signing key version for rotation support
+ *   - delegation: delegation grant details when acting on behalf of another
  *
  * @param {object} data
  * @param {string} data.intent_hash - SHA-256 hash of the intent (required)
@@ -124,7 +130,7 @@ function buildChainOrder(data) {
  * @param {string} [data.authorized_by] - Who authorized it (optional)
  * @param {string} [data.receipt_type] - Receipt classification (defaults based on content)
  * @param {object} [data.ingestion] - Ingestion provenance
- * @param {object} [data.identity_binding] - Ed25519 signer proof
+ * @param {object} [data.identity_binding] - Ed25519 signer proof with optional v2.3 enrichment
  * @returns {object} The complete receipt
  */
 export function generateReceipt(data) {
@@ -188,6 +194,11 @@ export function generateReceipt(data) {
       signature_payload_hash: data.identity_binding.signature_payload_hash || null,
       verification_method: data.identity_binding.verification_method || null,
       ed25519_signed: data.identity_binding.ed25519_signed || false,
+      // v2.3 identity enrichment fields (optional)
+      role_exercised: data.identity_binding.role_exercised || null,
+      actor_type: data.identity_binding.actor_type || null,
+      key_version: data.identity_binding.key_version ?? null,
+      delegation: data.identity_binding.delegation || null,
     };
   }
 
@@ -239,9 +250,13 @@ export function generateKeyPair() {
  * @param {object} options.privateKey - Node.js crypto KeyObject (Ed25519 private key)
  * @param {string} options.publicKeyHex - 64-char hex-encoded public key
  * @param {string} options.signerId - Identifier of the signing authority
+ * @param {string} [options.roleExercised] - v2.3: role the signer is exercising
+ * @param {string} [options.actorType] - v2.3: type of actor (human, ai_agent, service, system, external)
+ * @param {number} [options.keyVersion] - v2.3: signing key version number
+ * @param {object} [options.delegation] - v2.3: delegation grant details
  * @returns {object} The receipt with identity_binding populated
  */
-export function signReceipt(receipt, { privateKey, publicKeyHex, signerId }) {
+export function signReceipt(receipt, { privateKey, publicKeyHex, signerId, roleExercised, actorType, keyVersion, delegation }) {
   const receiptHash = receipt.hash_chain.receipt_hash;
   if (!receiptHash || !/^[a-f0-9]{64}$/.test(receiptHash)) {
     throw new Error("Cannot sign: receipt has no valid receipt_hash");
@@ -260,6 +275,11 @@ export function signReceipt(receipt, { privateKey, publicKeyHex, signerId }) {
     signed_at: new Date().toISOString(),
     verification_method: "ed25519-nacl",
     ed25519_signed: true,
+    // v2.3 identity enrichment fields (optional)
+    role_exercised: roleExercised || null,
+    actor_type: actorType || null,
+    key_version: keyVersion ?? null,
+    delegation: delegation || null,
   };
 
   return receipt;

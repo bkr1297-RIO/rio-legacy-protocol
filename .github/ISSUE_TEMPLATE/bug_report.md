@@ -28,7 +28,7 @@ What actually happened. Include error messages, stack traces, or incorrect outpu
 
 - **Language**: Node.js / Python / Both
 - **Runtime version**: (e.g., Node.js 22.0.0, Python 3.11.4)
-- **Package version**: (e.g., rio-receipt-protocol 2.2.0)
+- **Package version**: (e.g., rio-receipt-protocol 2.3.0)
 - **OS**: (e.g., macOS 15, Ubuntu 24.04, Windows 11)
 - **Installation method**: npm / pip / cloned from source
 

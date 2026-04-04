@@ -1,7 +1,7 @@
 /**
  * RIO Receipt Protocol — TypeScript Declarations
  * @module rio-receipt-protocol
- * @version 2.2.0
+ * @version 2.3.0
  */
 
 // ─── Core Types ─────────────────────────────────────────────────────
@@ -27,6 +27,18 @@ export interface IngestionProvenance {
   timestamp: string;
 }
 
+// ─── v2.3 Identity Types ──────────────────────────────────────────
+
+export interface Delegation {
+  delegation_id: string;
+  delegate_id: string;
+  delegate_actor_type: "human" | "ai_agent" | "service" | "system" | "external";
+  scope: string[];
+  risk_ceiling: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  delegated_at: string;
+  expires_at: string | null;
+}
+
 export interface IdentityBinding {
   signer_id: string | null;
   public_key_hex: string | null;
@@ -34,6 +46,14 @@ export interface IdentityBinding {
   signature_payload_hash: string | null;
   verification_method: string | null;
   ed25519_signed: boolean;
+  /** v2.3: Role the signer was exercising (e.g., 'approver', 'operator', 'auditor') */
+  role_exercised?: string | null;
+  /** v2.3: Type of actor that signed this receipt */
+  actor_type?: "human" | "ai_agent" | "service" | "system" | "external" | null;
+  /** v2.3: Signing key version number for rotation support */
+  key_version?: number | null;
+  /** v2.3: Delegation grant details when acting on behalf of another */
+  delegation?: Delegation | null;
 }
 
 export interface Receipt {
@@ -187,7 +207,19 @@ export interface KeyPair {
 export function generateKeyPair(): KeyPair;
 export function signReceipt(
   receipt: Receipt,
-  options: { privateKey: object; publicKeyHex: string; signerId: string }
+  options: {
+    privateKey: object;
+    publicKeyHex: string;
+    signerId: string;
+    /** v2.3: role the signer is exercising */
+    roleExercised?: string;
+    /** v2.3: type of actor */
+    actorType?: "human" | "ai_agent" | "service" | "system" | "external";
+    /** v2.3: signing key version number */
+    keyVersion?: number;
+    /** v2.3: delegation grant details */
+    delegation?: Delegation;
+  }
 ): Receipt;
 
 // ─── Ledger ─────────────────────────────────────────────────────────
