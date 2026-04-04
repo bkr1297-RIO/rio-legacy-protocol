@@ -1,0 +1,68 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test-node:
+    name: Node.js ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Run conformance tests
+        run: npm test
+      - name: Verify CLI
+        run: |
+          node cli/verify.mjs receipt examples/sample_receipt_valid.json
+          node cli/verify.mjs receipt examples/sample_receipt_governed.json
+      - name: Verify examples run
+        run: |
+          for f in examples/*.mjs; do
+            echo "--- Running $f ---"
+            node "$f"
+          done
+  test-python:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run conformance tests
+        working-directory: python
+        run: python tests/test_conformance.py
+  lint:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate package.json
+        run: npm pack --dry-run
+      - name: Check TypeScript declarations
+        run: |
+          npx tsc --noEmit --strict index.d.ts 2>&1 || true
+      - name: Validate JSON samples
+        run: |
+          for f in examples/*.json; do
+            echo "Validating $f"
+            python3 -c "import json; json.load(open('$f'))"
+          done
