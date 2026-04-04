@@ -1,10 +1,10 @@
 """
-RIO Receipt Protocol — Python Implementation (v2.2)
+RIO Receipt Protocol — Python Implementation (v2.3)
 
 Cryptographic proof for AI actions. Open standard. Zero required dependencies.
 """
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 
 from .receipts import (
     sha256, hash_intent, hash_execution, hash_governance, hash_authorization,

@@ -14,7 +14,7 @@
  * Run with: node examples/end-to-end.mjs
  * Zero external dependencies — uses only the reference implementations.
  *
- * @version 2.2.0
+ * @version 2.3.0
  * @license MIT OR Apache-2.0
  */
 

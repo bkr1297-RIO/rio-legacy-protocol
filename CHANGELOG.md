@@ -2,6 +2,27 @@
 
 All notable changes to the RIO Receipt Protocol will be documented in this file.
 
+## [2.3.0] - 2026-04-04
+
+### Added
+- Identity enrichment fields in `identity_binding`: `role_exercised`, `actor_type`, `key_version`
+- Delegation support: `delegation` sub-object in `identity_binding` with `delegation_id`, `delegate_id`, `delegate_actor_type`, `scope`, `risk_ceiling`, `delegated_at`, `expires_at`
+- 7 new conformance tests (Category 10: Identity Enrichment) covering role/actor, key version, delegation, hash stability, and backward compatibility
+- Receipt schema v2.3 with updated `identity_binding` definition
+- TypeScript type declarations for all new identity enrichment fields
+- Python implementation support for identity enrichment fields
+
+### Changed
+- `signReceipt()` now accepts optional `roleExercised`, `actorType`, `keyVersion`, and `delegation` parameters
+- Python `sign_receipt()` now accepts optional `role_exercised`, `actor_type`, `key_version`, and `delegation` parameters
+- Receipt spec document updated with Identity Enrichment section
+- All version references bumped to 2.3.0
+
+### Notes
+- All new fields are optional — v2.2 receipts remain fully valid and verifiable
+- Identity enrichment fields do not affect `receipt_hash` computation (they are metadata in `identity_binding`, not in `hash_chain`)
+- Backward compatible: no breaking changes from v2.2
+
 ## [2.2.0] - 2026-04-01
 
 ### Added

@@ -126,7 +126,7 @@ async function handleRequest(req, res) {
       return respond(res, 200, {
         status: "ok",
         service: "rio-receipt-protocol",
-        version: "2.2.0",
+        version: "2.3.0",
         ledger_entries: ledger.getEntryCount(),
         chain_tip: ledger.getCurrentHash(),
         ed25519_public_key: serverKeyPair.publicKeyHex,
@@ -309,7 +309,7 @@ server.listen(PORT, HOST, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║  RIO Receipt Protocol — REST API Server                  ║
-║  Version: 2.2.0                                          ║
+║  Version: 2.3.0                                          ║
 ║  Listening: http://${HOST}:${PORT}                         ║
 ║  Ledger: ${LEDGER_FILE.padEnd(46)}║
 ╚══════════════════════════════════════════════════════════╝

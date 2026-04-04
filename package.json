@@ -1,6 +1,6 @@
 {
   "name": "rio-receipt-protocol",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Cryptographic proof for AI actions. Generate tamper-evident receipts, maintain hash-chained ledgers, and verify AI action audit trails. Zero dependencies.",
   "type": "module",
   "main": "index.mjs",
