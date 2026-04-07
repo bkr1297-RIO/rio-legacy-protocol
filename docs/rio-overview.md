@@ -40,7 +40,7 @@ The double line (`═══`) marks the boundary between the open protocol and t
 |-----------|--------|-------------|
 | Receipt Protocol | **Open Standard** | Receipt format, hash chain, verification, ledger format |
 | Reference Implementations | **Open Source** | Node.js and Python packages, CLI verifier |
-| Conformance Tests | **Open Source** | 58 tests across two languages |
+| Conformance Tests | **Open Source** | 73 tests across two languages (44 Node.js + 29 Python) |
 | Governance & Control Plane | **Platform (Licensed)** | Policy enforcement, human approval workflows, execution control |
 | Command Interface | **Platform (Licensed)** | Human dashboard, oversight, and operational controls |
 
