@@ -5,10 +5,28 @@
 [![PyPI: rio-receipt-protocol](https://img.shields.io/pypi/v/rio-receipt-protocol.svg)](https://pypi.org/project/rio-receipt-protocol/)
 [![Tests: 73 conformance](https://img.shields.io/badge/Tests-73%20conformance%20(44%20Node%20%2B%2029%20Python)-brightgreen.svg)](tests/conformance.test.mjs)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-zero-orange.svg)](#)
+[![Ask Bondi](https://img.shields.io/badge/Ask%20Bondi-Implementation%20Assistant-blue)](https://riodemo-ux2sxdqo.manus.space/ask)
 
 **Cryptographic proof for AI actions. Open standard. Zero dependencies.**
 
 Your AI does something. This protocol proves it happened, what was requested, what executed, and that the record hasn't been changed. It wraps around your existing system — you don't replace anything, you add a proof layer.
+
+---
+
+## Ask Bondi (Implementation Assistant)
+
+Have questions about how to implement RIO?
+
+> Don't want to read the docs?
+> Ask Bondi → https://riodemo-ux2sxdqo.manus.space/ask
+
+Ask anything about:
+- Receipt protocol
+- Gateway integration
+- Governed action flow
+- End-to-end implementation
+
+Bondi provides step-by-step, developer-ready answers.
 
 ---
 
