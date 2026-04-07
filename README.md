@@ -718,6 +718,15 @@ For security vulnerabilities, see **[SECURITY.md](SECURITY.md)**.
 
 ---
 
+## Memory Layer (MANTIS)
+
+The full build history of the RIO system — 120 conversations spanning February to April 2026 — is available as a structured corpus in the [rio-system](https://github.com/bkr1297-RIO/rio-system) repository. This is queryable context and provenance for audit and grounding, not training data and not authority.
+
+- **Location:** `rio-system/data/conversations_export_2026-04-07.json`
+- **Definition:** [rio-system/docs/MEMORY_LAYER.md](https://github.com/bkr1297-RIO/rio-system/blob/main/docs/MEMORY_LAYER.md)
+
+---
+
 ## License
 
 Dual-licensed under MIT and Apache 2.0. Use whichever fits your project.
