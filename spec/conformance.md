@@ -196,7 +196,7 @@ This mapping allows verifiers to translate between the implementation's format a
 
 The RIO v2.2 reference implementation uses an internal schema optimized for multi-hash chain computation. Full mapping details are documented in the [Receipt Protocol Specification, Section 16](receipt-protocol.md#16-reference-implementation-mapping-rio-v22).
 
-The v2.2 reference test suite contains 29 tests per language (Node.js and Python), covering all five conformance levels:
+The v2.3 reference test suite contains 44 Node.js tests and 29 Python tests, covering all five conformance levels:
 
 **Node.js:**
 ```bash
@@ -211,7 +211,7 @@ cd rio-receipt-protocol/python
 PYTHONPATH=. python3 tests/test_conformance.py
 ```
 
-Expected output for both: 29 tests, 29 passed, 0 failed.
+Expected output: Node.js 44 tests, 44 passed. Python 29 tests, 29 passed.
 
 ---
 

@@ -197,14 +197,43 @@ async function verifyRemote(url) {
       if (Array.isArray(receipts) && receipts.length > 0) {
         info(`Fetched ${receipts.length} recent receipts`);
         let validCount = 0;
+        let verificationMode = null;
         for (const r of receipts) {
-          const result = verifyReceipt(r);
-          if (result.valid) validCount++;
+          if (r.hash_chain) {
+            // Protocol-format receipt — full hash chain verification
+            verificationMode = verificationMode || "receipt";
+            const result = verifyReceipt(r);
+            if (result.valid) {
+              validCount++;
+            } else {
+              warn(`Receipt ${r.receipt_id}: hash verification failed`);
+              for (const e of result.errors) warn(`  ${e}`);
+            }
+          } else if (r.receipt_hash && r.ledger_hash) {
+            // Gateway ledger entry — verify structural integrity
+            verificationMode = verificationMode || "ledger_entry";
+            const hasReceiptHash = /^[a-f0-9]{64}$/.test(r.receipt_hash);
+            const hasLedgerHash = /^[a-f0-9]{64}$/.test(r.ledger_hash);
+            const hasEntryId = !!r.entry_id;
+            const hasTimestamp = !!r.timestamp;
+            if (hasReceiptHash && hasLedgerHash && hasEntryId && hasTimestamp) {
+              validCount++;
+            } else {
+              warn(`Ledger entry ${r.entry_id || "unknown"}: missing required fields`);
+            }
+          } else {
+            warn(`Entry skipped: unrecognized format (no hash_chain or receipt_hash)`);
+          }
         }
         if (validCount === receipts.length) {
-          pass(`All ${validCount} receipts verified`);
+          if (verificationMode === "receipt") {
+            pass(`All ${validCount} receipts verified (full hash chain)`);
+          } else {
+            pass(`All ${validCount} ledger entries verified (receipt_hash + ledger_hash present)`);
+            info(`Tip: Gateway can return full protocol receipts for deeper verification`);
+          }
         } else {
-          warn(`${validCount}/${receipts.length} receipts valid`);
+          warn(`${validCount}/${receipts.length} entries valid`);
         }
       }
     }

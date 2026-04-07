@@ -386,6 +386,16 @@ An implementation consuming v2.2 receipts can produce a canonical receipt view:
 
 ```javascript
 function toCanonical(v22Receipt) {
+  // Map receipt_type to canonical decision
+  let decision = "executed";
+  if (v22Receipt.receipt_type === "governed_action") {
+    decision = v22Receipt.authorized_by ? "executed" : "pending";
+  }
+  // If the receipt has execution failure indicators, override
+  if (v22Receipt.hash_chain?.execution_hash === null) {
+    decision = "denied";
+  }
+
   return {
     receipt_id: v22Receipt.receipt_id,
     timestamp: v22Receipt.timestamp,
@@ -393,9 +403,9 @@ function toCanonical(v22Receipt) {
     actor_id: v22Receipt.agent_id,
     action_type: v22Receipt.action,
     action_summary: v22Receipt.action,
-    decision: v22Receipt.receipt_type === "governed_action" ? "executed" : "executed",
+    decision: decision,
     receipt_hash: v22Receipt.hash_chain.receipt_hash,
-    signature: v22Receipt.identity_binding?.signature || null,
+    signature: v22Receipt.identity_binding?.signature_hex || null,
     verification_status: "unverified"
   };
 }

@@ -3,7 +3,7 @@
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20%2F%20Apache--2.0-blue.svg)](https://github.com/bkr1297-RIO/rio-receipt-protocol/blob/main/LICENSE)
 [![npm: rio-receipt-protocol](https://img.shields.io/npm/v/rio-receipt-protocol.svg)](https://www.npmjs.com/package/rio-receipt-protocol)
 [![PyPI: rio-receipt-protocol](https://img.shields.io/pypi/v/rio-receipt-protocol.svg)](https://pypi.org/project/rio-receipt-protocol/)
-[![Tests: 58 conformance](https://img.shields.io/badge/Tests-58%20conformance%20(29%20Node%20%2B%2029%20Python)-brightgreen.svg)](tests/conformance.test.mjs)
+[![Tests: 73 conformance](https://img.shields.io/badge/Tests-73%20conformance%20(44%20Node%20%2B%2029%20Python)-brightgreen.svg)](tests/conformance.test.mjs)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-zero-orange.svg)](#)
 
 **Cryptographic proof for AI actions. Open standard. Zero dependencies.**
@@ -454,7 +454,7 @@ LOW-risk actions skip step 4 (auto-approved). HIGH-risk actions always require s
 
 ## Conformance
 
-The conformance test suite validates 8 categories across Node.js and Python (58 tests total):
+The conformance test suite validates 8 categories across Node.js and Python (73 tests total):
 
 | Suite | Tests | What It Proves |
 |-------|-------|----------------|
@@ -469,7 +469,7 @@ The conformance test suite validates 8 categories across Node.js and Python (58 
 
 ```bash
 # Run conformance tests
-node tests/conformance.test.mjs                          # Node.js (29 tests)
+node tests/conformance.test.mjs                          # Node.js (44 tests)
 cd python && PYTHONPATH=. python3 tests/test_conformance.py  # Python (29 tests)
 ```
 
@@ -602,7 +602,7 @@ rio-receipt-protocol/
 │   ├── FAQ.md                      # Frequently asked questions
 │   └── landing_page_content.md     # Protocol website content
 ├── tests/                           # Node.js conformance test suite
-│   ├── conformance.test.mjs        # 29 tests across 8 categories
+│   ├── conformance.test.mjs        # 44 tests across 8 categories
 │   └── legacy/                     # Pre-v2.2 tests (Ed25519 signing)
 ├── examples/                        # Usage examples and demos
 │   ├── basic-usage.mjs             # Minimal flow: intent → receipt → ledger → verify

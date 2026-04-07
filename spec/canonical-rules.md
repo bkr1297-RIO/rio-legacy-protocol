@@ -270,5 +270,5 @@ For a new implementation to be conformant:
 - [ ] Unsigned receipts are valid (signature check skipped, not failed)
 - [ ] Ledger chain uses prev_hash → ledger_hash linking
 - [ ] Genesis entry has prev_hash = 64 zeros
-- [ ] All 38 Node.js conformance tests pass
+- [ ] All 44 Node.js conformance tests pass
 - [ ] All 29 Python conformance tests pass
