@@ -7,9 +7,72 @@
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-zero-orange.svg)](#)
 [![Ask Bondi](https://img.shields.io/badge/Ask%20Bondi-Implementation%20Assistant-blue)](https://riodemo-ux2sxdqo.manus.space/ask)
 
+## What RIO Is
+
+> **RIO converts AI actions into human-authorized, policy-controlled, cryptographically verifiable transactions.**
+
+RIO is a governed execution protocol. Every action follows a fixed loop:
+
+```
+Intent → Govern → Approve → Execute → Receipt → Ledger
+```
+
+This is enforced, not suggested. There is no code path from intent to execution that bypasses governance.
+
+---
+
+## Three Views of the Same System
+
+RIO is defined in three complementary ways. They are not different systems — they describe the same system completely.
+
+### 1. Invariants (What Cannot Break)
+
+| # | Rule |
+|---|------|
+| 1 | Human is final authority |
+| 2 | No execution without approval (when required) |
+| 3 | Every action produces a receipt |
+| 4 | Every receipt is written to a ledger |
+| 5 | System fails closed |
+| 6 | Independent verification is always possible |
+| 7 | Roles are strictly separated |
+
+### 2. Lifecycle (How It Runs)
+
+```
+Observe → Analyze → Plan → Govern → Approve → Execute → Record → Prove → Learn
+```
+
+Governance happens before execution. Proof happens after execution. Learning is controlled and auditable.
+
+### 3. Layers (What Exists)
+
+| Layer | Function |
+|-------|----------|
+| Authority | Human |
+| Governance | Policy Engine |
+| Execution | Gateway |
+| Witness | Receipt + Ledger |
+| Learning | Feedback Loop |
+| Stress Testing | Failure Analysis |
+| Stabilization | Convergence / Invariants |
+| System Grammar | Architecture + Rules |
+
+---
+
+## What This Means
+
+This system does not trust AI. It controls what AI is allowed to do, requires explicit approval when needed, and produces verifiable proof of every action. If it cannot be approved, logged, and verified — it does not execute.
+
+For a complete orientation, see [How to Understand RIO](docs/HOW_TO_UNDERSTAND_RIO.md) and [System Overview](docs/SYSTEM_OVERVIEW.md).
+
+---
+
+## This Repository
+
 **Cryptographic proof for AI actions. Open standard. Zero dependencies.**
 
-Your AI does something. This protocol proves it happened, what was requested, what executed, and that the record hasn't been changed. It wraps around your existing system — you don't replace anything, you add a proof layer.
+This repo contains the receipt protocol — the proof layer of RIO. Your AI does something. This protocol proves it happened, what was requested, what executed, and that the record hasn't been changed. It wraps around your existing system — you don't replace anything, you add a proof layer.
 
 ---
 
@@ -17,16 +80,9 @@ Your AI does something. This protocol proves it happened, what was requested, wh
 
 Have questions about how to implement RIO?
 
-> Don't want to read the docs?
-> Ask Bondi → https://riodemo-ux2sxdqo.manus.space/ask
+> Ask Bondi → [https://riodemo-ux2sxdqo.manus.space/ask](https://riodemo-ux2sxdqo.manus.space/ask)
 
-Ask anything about:
-- Receipt protocol
-- Gateway integration
-- Governed action flow
-- End-to-end implementation
-
-Bondi provides step-by-step, developer-ready answers.
+Ask anything about receipt protocol, gateway integration, governed action flow, or end-to-end implementation. Bondi provides step-by-step, developer-ready answers.
 
 ---
 
