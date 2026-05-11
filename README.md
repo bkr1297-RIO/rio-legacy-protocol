@@ -1,5 +1,14 @@
 # RIO Receipt Protocol
 
+> **⚠️ LEGACY REPOSITORY — SUPERSEDED**
+>
+> This repository is superseded by [`bkr1297-RIO/rio-receipt-protocol`](https://github.com/bkr1297-RIO/rio-receipt-protocol), which is the canonical receipt protocol repository.
+>
+> This repo is preserved for historical reference only. Do not use it for new implementations.
+>
+> For the current RIO protocol specification, see [`bkr1297-RIO/rio-protocol`](https://github.com/bkr1297-RIO/rio-protocol).
+
+
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20%2F%20Apache--2.0-blue.svg)](https://github.com/bkr1297-RIO/rio-receipt-protocol/blob/main/LICENSE)
 [![npm: rio-receipt-protocol](https://img.shields.io/npm/v/rio-receipt-protocol.svg)](https://www.npmjs.com/package/rio-receipt-protocol)
 [![PyPI: rio-receipt-protocol](https://img.shields.io/pypi/v/rio-receipt-protocol.svg)](https://pypi.org/project/rio-receipt-protocol/)
